@@ -226,7 +226,7 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
                                                   fontSize: 24,
                                                   fontWeight: FontWeight.bold,
                                                 ),
-                                              ),
+                                    ),
                                               Text(
                                                 '${book['reviews']} ${lang['reviews'] ?? 'reviews'}',
                                                 style: const TextStyle(
