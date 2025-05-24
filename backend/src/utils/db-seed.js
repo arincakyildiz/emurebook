@@ -132,15 +132,15 @@ const books = [
 // Sample messages - will be populated with user IDs
 const messages = [
   {
-    content: 'Merhaba, bu kitap hala satılık mı?',
+    content: 'Hello, is this book still available for sale?',
     isRead: true,
   },
   {
-    content: 'Evet, hala satılık. İlgileniyor musunuz?',
+    content: 'Yes, it\'s still available. Are you interested?',
     isRead: true,
   },
   {
-    content: 'Ne kadara satıyorsunuz?',
+    content: 'How much are you selling it for?',
     isRead: false,
   },
 ];

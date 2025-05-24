@@ -1,87 +1,107 @@
-# EmuReBook - Kitap Değişim Platformu
+# EmuReBook - Book Exchange Platform
 
-EmuReBook, üniversite öğrencileri arasında kitap değişimi, satışı ve kiralama işlemlerini kolaylaştırmak için geliştirilmiş bir mobil uygulamadır.
+EmuReBook is a mobile application developed to facilitate book exchange, sale, and rental transactions between university students.
 
-## Özellikler
+## Features
 
-- Kullanıcı hesabı oluşturma ve giriş yapma
-- Kitap listeleme, arama ve filtreleme
-- Kitap detaylarını görüntüleme
-- Kitapları favorilere ekleme
-- Kitap sahipleri ile mesajlaşma
-- Kitapları puanlama ve değerlendirme
-- Kullanıcı profilini düzenleme
+- Create user account and login
+- List, search, and filter books
+- View book details
+- Add books to favorites
+- Message with book owners
+- Rate and review books
+- Edit user profile
+- Multi-language support (English and Turkish)
 
-## Proje Yapısı
+## Technologies Used
 
-Proje iki ana kısımdan oluşmaktadır:
+**Frontend:**
 
-1. **Frontend (Flutter)**: `lib/` klasöründe bulunur
-2. **Backend (Node.js)**: `backend/` klasöründe bulunur
+- Flutter (Dart)
+- Material Design UI components
+- State management with StatefulWidget
 
-## Kurulum
+**Backend:**
 
-### Frontend (Flutter)
+- Node.js with Express.js
+- MongoDB database
+- JWT authentication
+- RESTful API architecture
 
-1. Gerekli bağımlılıkları yükleyin:
+## Installation
 
-```bash
-flutter pub get
-```
+### Frontend (Flutter App)
 
-2. API servisinde baseURL'i kendi backend sunucunuza göre ayarlayın (`lib/services/api_service.dart`).
+1. Install Flutter SDK
+2. Clone the repository
+3. Run `flutter pub get` to install dependencies
+4. Run `flutter run` to start the application
 
-3. Uygulamayı çalıştırın:
+### Backend (Node.js Server)
 
-```bash
-flutter run
-```
+1. Navigate to the backend directory
+2. Run `npm install` to install dependencies
+3. Create `.env` file and configure database connection
+4. Run `npm start` to start the server
 
-### Backend (Node.js)
-
-1. `backend` klasörüne gidin:
-
-```bash
-cd backend
-```
-
-2. Gerekli paketleri yükleyin:
-
-```bash
-npm install
-```
-
-3. `.env` dosyası oluşturun:
+## Project Structure
 
 ```
-NODE_ENV=development
-PORT=5000
-MONGODB_URI=mongodb://localhost:27017/emurebook
-JWT_SECRET=your-secret-key-should-be-at-least-32-characters
-JWT_EXPIRES_IN=90d
-JWT_COOKIE_EXPIRES_IN=90
+lib/
+├── main.dart
+├── models/
+├── screens/
+├── services/
+├── widgets/
+└── config/
+
+backend/
+├── src/
+│   ├── controllers/
+│   ├── models/
+│   ├── routes/
+│   ├── middleware/
+│   └── utils/
+├── package.json
+└── README.md
 ```
 
-4. MongoDB veritabanınızı çalıştırın.
+## API Endpoints
 
-5. Backend sunucusunu başlatın:
+### Authentication
 
-```bash
-npm run dev
-```
+- POST `/api/auth/register` - User registration
+- POST `/api/auth/login` - User login
+- POST `/api/auth/logout` - User logout
 
-## Backend API Dokümantasyonu
+### Books
 
-Detaylı API dokümantasyonu için `backend/README.md` dosyasını inceleyebilirsiniz.
+- GET `/api/books` - Get all books
+- POST `/api/books` - Create new book listing
+- GET `/api/books/:id` - Get book details
+- PATCH `/api/books/:id` - Update book
+- DELETE `/api/books/:id` - Delete book
 
-## Katkıda Bulunma
+### Messages
 
-1. Fork'layın
-2. Feature branch oluşturun (`git checkout -b feature/amazing-feature`)
-3. Değişikliklerinizi commit edin (`git commit -m 'Add some amazing feature'`)
-4. Branch'inizi push edin (`git push origin feature/amazing-feature`)
-5. Pull Request oluşturun
+- GET `/api/messages/conversations` - Get user conversations
+- POST `/api/messages` - Send message
+- GET `/api/messages/conversations/:userId` - Get conversation with specific user
 
-## Lisans
+### Users
 
-Bu proje MIT Lisansı altında lisanslanmıştır.
+- GET `/api/users/profile` - Get user profile
+- PATCH `/api/users/profile` - Update user profile
+- PATCH `/api/users/password` - Update password
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Commit your changes
+4. Push to the branch
+5. Create a Pull Request
+
+## License
+
+This project is licensed under the MIT License.

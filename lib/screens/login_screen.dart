@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:emurebook/services/service_provider.dart';
 import 'package:emurebook/widgets/loading_indicator.dart';
-import 'package:emurebook/widgets/error_display.dart';
 import 'home_layout.dart';
 import 'sign_up_screen.dart';
 
@@ -46,6 +45,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       await _authService.login(email, password);
+
       if (mounted) {
         Navigator.pushReplacement(
           context,
@@ -64,7 +64,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     if (isLoading) {
       return const Scaffold(
-        body: LoadingIndicator(message: 'Giriş yapılıyor...'),
+        body: LoadingIndicator(message: 'Logging in...'),
       );
     }
 

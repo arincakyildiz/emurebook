@@ -158,6 +158,9 @@ class _HomeLayoutState extends State<HomeLayout> {
       'name': 'Ad',
       'email': 'E-posta',
       'save': 'Kaydet',
+      'new_password': 'Yeni Şifre',
+      'change_password': 'Şifre Değiştir',
+      'password_changed': 'Şifre değiştirildi!',
     }
   };
 
@@ -205,7 +208,8 @@ class _HomeLayoutState extends State<HomeLayout> {
             icon: Icon(Icons.library_books),
             label: 'Listings',
           ),
-          BottomNavigationBarItem(icon: Icon(Icons.favorite), label: 'Favorites'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.favorite), label: 'Favorites'),
           BottomNavigationBarItem(icon: Icon(Icons.message), label: 'Messages'),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
         ],

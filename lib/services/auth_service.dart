@@ -4,11 +4,11 @@ import '../models/user_model.dart';
 import 'api_service.dart';
 
 class AuthService {
-  // Admin kullanıcısı
+  // Admin user
   static const String ADMIN_EMAIL = "admin@emu.edu.tr";
   static const String ADMIN_PASSWORD = "admin123";
 
-  // Kayıtlı kullanıcılar listesi (mock)
+  // Registered users list (mock)
   final List<Map<String, dynamic>> _registeredUsers = [
     {
       'id': '100',
@@ -48,10 +48,10 @@ class AuthService {
       final savedUserId = prefs.getString('user_id');
 
       if (token != null && savedUserId != null) {
-        // Kayıtlı kullanıcıyı bul
+        // Find registered user
         final savedUserData = _registeredUsers.firstWhere(
           (userData) => userData['id'] == savedUserId,
-          orElse: () => throw Exception('Kullanıcı bulunamadı'),
+          orElse: () => throw Exception('User not found'),
         );
 
         _currentUser = _createUserFromData(savedUserData);
@@ -70,37 +70,37 @@ class AuthService {
   Future<User> register(Map<String, dynamic> userData) async {
     try {
       await Future.delayed(
-          const Duration(seconds: 1)); // API isteği simülasyonu
+          const Duration(seconds: 1)); // API request simulation
 
-      // Email daha önce kayıtlı mı kontrol et
+      // Check if email is already registered
       final existingUser = _registeredUsers
           .where((user) => user['email'] == userData['email'])
           .toList();
       if (existingUser.isNotEmpty) {
-        throw Exception('Bu email adresi zaten kullanılmaktadır');
+        throw Exception('This email address is already in use');
       }
 
-      // Yeni kullanıcı oluştur
+      // Create new user
       final newUserId =
           (DateTime.now().millisecondsSinceEpoch % 10000).toString();
       final newUserData = {
         'id': newUserId,
         'name': userData['name'],
         'email': userData['email'],
-        'password': userData['password'] ?? 'password123', // Varsayılan şifre
+        'password': userData['password'] ?? 'password123', // Default password
         'department': userData['department'],
         'studentId': userData['studentId'],
         'phone': userData['phone'],
-        'role': 'user', // Yeni kayıt olan herkes normal kullanıcı olacak
+        'role': 'user', // All new registrations will be normal users
         'favoriteBooks': [],
         'createdAt': DateTime.now().toIso8601String(),
       };
 
-      // Kullanıcıyı kaydet
+      // Save user
       _registeredUsers.add(newUserData);
       _currentUser = _createUserFromData(newUserData);
 
-      // Token kaydet
+      // Save token
       SharedPreferences prefs = await SharedPreferences.getInstance();
       final token = 'dummy-token-${DateTime.now().millisecondsSinceEpoch}';
       await prefs.setString('auth_token', token);
@@ -118,27 +118,26 @@ class AuthService {
   Future<User> login(String email, String password) async {
     try {
       await Future.delayed(
-          const Duration(seconds: 1)); // API isteği simülasyonu
+          const Duration(seconds: 1)); // API request simulation
 
       if (email.isEmpty || password.isEmpty) {
-        throw Exception('Email ve şifre boş olamaz');
+        throw Exception('Email and password cannot be empty');
       }
 
-      // Kullanıcıyı e-posta adresine göre bul
+      // Find user by email address
       final userData = _registeredUsers.firstWhere(
         (user) => user['email'] == email,
-        orElse: () =>
-            throw Exception('Kullanıcı bulunamadı, lütfen önce kayıt olunuz'),
+        orElse: () => throw Exception('User not found, please register first'),
       );
 
-      // Şifre kontrolü
+      // Password check
       if (userData['password'] != password) {
-        throw Exception('Geçersiz kullanıcı adı veya şifre');
+        throw Exception('Invalid username or password');
       }
 
       _currentUser = _createUserFromData(userData);
 
-      // Token kaydet
+      // Save token
       SharedPreferences prefs = await SharedPreferences.getInstance();
       final token =
           '${userData["role"]}-token-${DateTime.now().millisecondsSinceEpoch}';
@@ -156,7 +155,7 @@ class AuthService {
   // Logout user
   Future<void> logout() async {
     try {
-      // Token temizle
+      // Clear token
       SharedPreferences prefs = await SharedPreferences.getInstance();
       await prefs.remove('auth_token');
       await prefs.remove('user_id');
@@ -172,21 +171,21 @@ class AuthService {
   Future<User> updateProfile(Map<String, dynamic> userData) async {
     try {
       await Future.delayed(
-          const Duration(seconds: 1)); // API isteği simülasyonu
+          const Duration(seconds: 1)); // API request simulation
 
       if (_currentUser == null) {
-        throw Exception('Kullanıcı girişi yapılmamış');
+        throw Exception('User is not logged in');
       }
 
-      // Kayıtlı kullanıcılar listesinde güncelle
+      // Update in registered users list
       int userIndex =
           _registeredUsers.indexWhere((user) => user['id'] == _currentUser!.id);
       if (userIndex != -1) {
-        // Mevcut kullanıcı verilerini al
+        // Get current user data
         Map<String, dynamic> updatedUserData =
             Map.from(_registeredUsers[userIndex]);
 
-        // Güncellenen alanları ekle
+        // Add updated fields
         if (userData['name'] != null)
           updatedUserData['name'] = userData['name'];
         if (userData['email'] != null)
@@ -198,10 +197,10 @@ class AuthService {
         if (userData['phone'] != null)
           updatedUserData['phone'] = userData['phone'];
 
-        // Kullanıcıyı güncelle
+        // Update user
         _registeredUsers[userIndex] = updatedUserData;
 
-        // Güncel kullanıcı nesnesini oluştur
+        // Create updated user object
         _currentUser = _createUserFromData(updatedUserData);
       }
 
@@ -217,32 +216,32 @@ class AuthService {
       String currentPassword, String newPassword) async {
     try {
       await Future.delayed(
-          const Duration(seconds: 1)); // API isteği simülasyonu
+          const Duration(seconds: 1)); // API request simulation
 
       if (_currentUser == null) {
-        throw Exception('Kullanıcı girişi yapılmamış');
+        throw Exception('User is not logged in');
       }
 
-      // Kayıtlı kullanıcı verilerini bul
+      // Find registered user data
       int userIndex =
           _registeredUsers.indexWhere((user) => user['id'] == _currentUser!.id);
       if (userIndex == -1) {
-        throw Exception('Kullanıcı bulunamadı');
+        throw Exception('User not found');
       }
 
-      // Mevcut şifre kontrolü
+      // Current password check
       if (_registeredUsers[userIndex]['password'] != currentPassword) {
-        throw Exception('Mevcut şifre yanlış');
+        throw Exception('Current password is incorrect');
       }
 
-      // Şifreyi güncelle
+      // Update password
       _registeredUsers[userIndex]['password'] = newPassword;
     } catch (e) {
       rethrow;
     }
   }
 
-  // Kullanıcı verilerinden User nesnesi oluşturma yardımcı metodu
+  // Helper method to create User object from user data
   User _createUserFromData(Map<String, dynamic> userData) {
     List<String> favorites = [];
     if (userData['favoriteBooks'] != null) {

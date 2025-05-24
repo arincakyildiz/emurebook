@@ -25,7 +25,7 @@ class ErrorDisplay extends StatelessWidget {
             ),
             const SizedBox(height: 16.0),
             Text(
-              'Hata Oluştu',
+              'Error Occurred',
               style: Theme.of(context).textTheme.titleLarge,
               textAlign: TextAlign.center,
             ),
@@ -39,7 +39,7 @@ class ErrorDisplay extends StatelessWidget {
               const SizedBox(height: 24.0),
               ElevatedButton(
                 onPressed: onRetry,
-                child: const Text('Tekrar Dene'),
+                child: const Text('Try Again'),
               ),
             ],
           ],

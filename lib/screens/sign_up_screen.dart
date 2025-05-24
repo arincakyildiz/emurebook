@@ -108,7 +108,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
   Widget build(BuildContext context) {
     if (isLoading) {
       return const Scaffold(
-        body: LoadingIndicator(message: 'Hesabınız oluşturuluyor...'),
+        body: LoadingIndicator(message: 'Creating your account...'),
       );
     }
 

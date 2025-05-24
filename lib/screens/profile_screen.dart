@@ -243,43 +243,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             title: widget.lang['privacy_security'] ??
                                 'Privacy & Security')));
               }),
-              _profileTile(context, Icons.language,
-                  widget.lang['language_settings'] ?? 'Language Settings', () {
-                showDialog(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    title: Text(
-                        widget.lang['selectLanguage'] ?? 'Select Language'),
-                    content: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        RadioListTile<String>(
-                          title: Text(widget.lang['english'] ?? 'English'),
-                          value: 'English',
-                          groupValue: widget.lang['turkish'] == 'Türkçe'
-                              ? 'Türkçe'
-                              : 'English',
-                          onChanged: (val) {
-                            Navigator.pop(context);
-                            widget.onLanguageChanged('English');
-                          },
-                        ),
-                        RadioListTile<String>(
-                          title: Text(widget.lang['turkish'] ?? 'Türkçe'),
-                          value: 'Türkçe',
-                          groupValue: widget.lang['turkish'] == 'Türkçe'
-                              ? 'Türkçe'
-                              : 'English',
-                          onChanged: (val) {
-                            Navigator.pop(context);
-                            widget.onLanguageChanged('Türkçe');
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              }),
               const SizedBox(height: 16),
               // Help & Support
               Text(

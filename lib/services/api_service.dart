@@ -1,79 +1,88 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:emurebook/config/api_config.dart';
+import '../config/api_config.dart';
 
 class ApiService {
   // API base URL from config
-  static final String baseUrl = ApiConfig.baseUrl;
+  static const String baseUrl = ApiConfig.baseUrl;
 
-  // Token'ı saklamak için
+  // Store token
   static String? _token;
 
-  // Headers
+  // Get headers with authentication
   static Future<Map<String, String>> _getHeaders() async {
-    Map<String, String> headers = {
+    final headers = {
       'Content-Type': 'application/json',
     };
 
-    if (_token == null) {
-      SharedPreferences prefs = await SharedPreferences.getInstance();
-      _token = prefs.getString(ApiConfig.tokenKey);
-    }
-
+    // Add token if exists
     if (_token != null) {
       headers['Authorization'] = 'Bearer $_token';
+    } else {
+      // Get token from SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token');
+      if (token != null) {
+        _token = token;
+        headers['Authorization'] = 'Bearer $token';
+      }
     }
 
     return headers;
   }
 
-  // Token'ı kaydet
+  // Save token
   static Future<void> saveToken(String token) async {
     _token = token;
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.setString(ApiConfig.tokenKey, token);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('auth_token', token);
   }
 
-  // Token'ı temizle
+  // Clear token
   static Future<void> clearToken() async {
     _token = null;
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.remove(ApiConfig.tokenKey);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('auth_token');
   }
 
-  // Kullanıcı Kaydı
+  // User Registration
   static Future<Map<String, dynamic>> register(
       Map<String, dynamic> userData) async {
     try {
       final response = await http.post(
         Uri.parse('$baseUrl${ApiConfig.authEndpoint}/register'),
-        headers: await _getHeaders(),
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: json.encode(userData),
       );
 
       final responseData = json.decode(response.body);
 
       if (response.statusCode == 201) {
+        // Save token if registration successful
         if (responseData['token'] != null) {
           await saveToken(responseData['token']);
         }
-        return responseData;
+        return responseData['data']['user'];
       } else {
-        throw responseData['message'] ?? 'Kayıt başarısız oldu';
+        throw responseData['message'] ?? 'Registration failed';
       }
     } catch (e) {
       rethrow;
     }
   }
 
-  // Kullanıcı Girişi
+  // User Login
   static Future<Map<String, dynamic>> login(
       String email, String password) async {
     try {
       final response = await http.post(
         Uri.parse('$baseUrl${ApiConfig.authEndpoint}/login'),
-        headers: await _getHeaders(),
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: json.encode({
           'email': email,
           'password': password,
@@ -83,32 +92,35 @@ class ApiService {
       final responseData = json.decode(response.body);
 
       if (response.statusCode == 200) {
+        // Save token if login successful
         if (responseData['token'] != null) {
           await saveToken(responseData['token']);
         }
-        return responseData;
+        return responseData['data']['user'];
       } else {
-        throw responseData['message'] ?? 'Giriş başarısız oldu';
+        throw responseData['message'] ?? 'Login failed';
       }
     } catch (e) {
       rethrow;
     }
   }
 
-  // Kullanıcı Çıkışı
+  // User Logout
   static Future<void> logout() async {
     try {
       await http.post(
         Uri.parse('$baseUrl${ApiConfig.authEndpoint}/logout'),
         headers: await _getHeaders(),
       );
+
       await clearToken();
     } catch (e) {
-      rethrow;
+      // Even if logout request fails, clear local token
+      await clearToken();
     }
   }
 
-  // Mevcut Kullanıcı Bilgilerini Getir
+  // Get Current User Information
   static Future<Map<String, dynamic>> getCurrentUser() async {
     try {
       final response = await http.get(
@@ -121,14 +133,14 @@ class ApiService {
       if (response.statusCode == 200) {
         return responseData['data']['user'];
       } else {
-        throw responseData['message'] ?? 'Kullanıcı bilgileri alınamadı';
+        throw responseData['message'] ?? 'Could not get user information';
       }
     } catch (e) {
       rethrow;
     }
   }
 
-  // Tüm Kitapları Getir
+  // Get All Books
   static Future<List<dynamic>> getAllBooks({
     int page = 1,
     int limit = 10,
@@ -158,14 +170,14 @@ class ApiService {
       if (response.statusCode == 200) {
         return responseData['data']['books'];
       } else {
-        throw responseData['message'] ?? 'Kitaplar alınamadı';
+        throw responseData['message'] ?? 'Could not get books';
       }
     } catch (e) {
       rethrow;
     }
   }
 
-  // Kitap Detayını Getir
+  // Get Book Details
   static Future<Map<String, dynamic>> getBookDetails(String bookId) async {
     try {
       final response = await http.get(
@@ -178,14 +190,14 @@ class ApiService {
       if (response.statusCode == 200) {
         return responseData['data']['book'];
       } else {
-        throw responseData['message'] ?? 'Kitap detayları alınamadı';
+        throw responseData['message'] ?? 'Could not get book details';
       }
     } catch (e) {
       rethrow;
     }
   }
 
-  // Yeni Kitap Ekle
+  // Add New Book
   static Future<Map<String, dynamic>> createBook(
       Map<String, dynamic> bookData) async {
     try {
@@ -200,14 +212,14 @@ class ApiService {
       if (response.statusCode == 201) {
         return responseData['data']['book'];
       } else {
-        throw responseData['message'] ?? 'Kitap eklenemedi';
+        throw responseData['message'] ?? 'Could not add book';
       }
     } catch (e) {
       rethrow;
     }
   }
 
-  // Kitap Güncelle
+  // Update Book
   static Future<Map<String, dynamic>> updateBook(
       String bookId, Map<String, dynamic> bookData) async {
     try {
@@ -222,14 +234,14 @@ class ApiService {
       if (response.statusCode == 200) {
         return responseData['data']['book'];
       } else {
-        throw responseData['message'] ?? 'Kitap güncellenemedi';
+        throw responseData['message'] ?? 'Could not update book';
       }
     } catch (e) {
       rethrow;
     }
   }
 
-  // Kitap Sil
+  // Delete Book
   static Future<void> deleteBook(String bookId) async {
     try {
       final response = await http.delete(
@@ -239,14 +251,14 @@ class ApiService {
 
       if (response.statusCode != 204) {
         final responseData = json.decode(response.body);
-        throw responseData['message'] ?? 'Kitap silinemedi';
+        throw responseData['message'] ?? 'Could not delete book';
       }
     } catch (e) {
       rethrow;
     }
   }
 
-  // Kitap Ara
+  // Search Books
   static Future<List<dynamic>> searchBooks(String query) async {
     try {
       final response = await http.get(
@@ -259,14 +271,14 @@ class ApiService {
       if (response.statusCode == 200) {
         return responseData['data']['books'];
       } else {
-        throw responseData['message'] ?? 'Kitap araması başarısız oldu';
+        throw responseData['message'] ?? 'Book search failed';
       }
     } catch (e) {
       rethrow;
     }
   }
 
-  // Kitap Kategorilerini Getir
+  // Get Book Categories
   static Future<List<dynamic>> getBookCategories() async {
     try {
       final response = await http.get(
@@ -279,19 +291,19 @@ class ApiService {
       if (response.statusCode == 200) {
         return responseData['data']['categories'];
       } else {
-        throw responseData['message'] ?? 'Kategoriler alınamadı';
+        throw responseData['message'] ?? 'Could not get categories';
       }
     } catch (e) {
       rethrow;
     }
   }
 
-  // Kitaba Puan Ver
+  // Rate Book
   static Future<Map<String, dynamic>> rateBook(
       String bookId, int rating, String? review) async {
     try {
       final response = await http.post(
-        Uri.parse('$baseUrl${ApiConfig.booksEndpoint}/$bookId/rating'),
+        Uri.parse('$baseUrl${ApiConfig.booksEndpoint}/$bookId/rate'),
         headers: await _getHeaders(),
         body: json.encode({
           'rating': rating,
@@ -304,14 +316,14 @@ class ApiService {
       if (response.statusCode == 200) {
         return responseData['data']['book'];
       } else {
-        throw responseData['message'] ?? 'Puanlama başarısız oldu';
+        throw responseData['message'] ?? 'Rating failed';
       }
     } catch (e) {
       rethrow;
     }
   }
 
-  // Favori Kitapları Getir
+  // Get Favorite Books
   static Future<List<dynamic>> getFavoriteBooks() async {
     try {
       final response = await http.get(
@@ -324,14 +336,14 @@ class ApiService {
       if (response.statusCode == 200) {
         return responseData['data']['favoriteBooks'];
       } else {
-        throw responseData['message'] ?? 'Favori kitaplar alınamadı';
+        throw responseData['message'] ?? 'Could not get favorite books';
       }
     } catch (e) {
       rethrow;
     }
   }
 
-  // Kitabı Favorilere Ekle/Çıkar
+  // Add/Remove Book to/from Favorites
   static Future<List<dynamic>> toggleFavoriteBook(String bookId) async {
     try {
       final response = await http.post(
@@ -344,14 +356,14 @@ class ApiService {
       if (response.statusCode == 200) {
         return responseData['data']['favoriteBooks'];
       } else {
-        throw responseData['message'] ?? 'Favori işlemi başarısız oldu';
+        throw responseData['message'] ?? 'Favorite operation failed';
       }
     } catch (e) {
       rethrow;
     }
   }
 
-  // Mesaj Gönder
+  // Send Message
   static Future<Map<String, dynamic>> sendMessage(
       String receiverId, String content,
       {String? relatedBookId}) async {
@@ -371,14 +383,14 @@ class ApiService {
       if (response.statusCode == 201) {
         return responseData['data']['message'];
       } else {
-        throw responseData['message'] ?? 'Mesaj gönderilemedi';
+        throw responseData['message'] ?? 'Could not send message';
       }
     } catch (e) {
       rethrow;
     }
   }
 
-  // Konuşmaları Getir
+  // Get Conversations
   static Future<List<dynamic>> getConversations() async {
     try {
       final response = await http.get(
@@ -391,19 +403,20 @@ class ApiService {
       if (response.statusCode == 200) {
         return responseData['data']['conversations'];
       } else {
-        throw responseData['message'] ?? 'Konuşmalar alınamadı';
+        throw responseData['message'] ?? 'Could not get conversations';
       }
     } catch (e) {
       rethrow;
     }
   }
 
-  // Belirli Bir Kullanıcıyla Olan Konuşmayı Getir
+  // Get Conversation with Specific User
   static Future<Map<String, dynamic>> getConversationWithUser(
       String userId) async {
     try {
       final response = await http.get(
-        Uri.parse('$baseUrl${ApiConfig.messagesEndpoint}/conversation/$userId'),
+        Uri.parse(
+            '$baseUrl${ApiConfig.messagesEndpoint}/conversations/$userId'),
         headers: await _getHeaders(),
       );
 
@@ -412,21 +425,21 @@ class ApiService {
       if (response.statusCode == 200) {
         return responseData['data'];
       } else {
-        throw responseData['message'] ?? 'Konuşma alınamadı';
+        throw responseData['message'] ?? 'Could not get conversation';
       }
     } catch (e) {
       rethrow;
     }
   }
 
-  // Profil Bilgilerini Güncelle
+  // Update Profile Information
   static Future<Map<String, dynamic>> updateProfile(
-      Map<String, dynamic> userData) async {
+      Map<String, dynamic> profileData) async {
     try {
       final response = await http.patch(
-        Uri.parse('$baseUrl${ApiConfig.authEndpoint}/update-me'),
+        Uri.parse('$baseUrl${ApiConfig.usersEndpoint}/profile'),
         headers: await _getHeaders(),
-        body: json.encode(userData),
+        body: json.encode(profileData),
       );
 
       final responseData = json.decode(response.body);
@@ -434,19 +447,19 @@ class ApiService {
       if (response.statusCode == 200) {
         return responseData['data']['user'];
       } else {
-        throw responseData['message'] ?? 'Profil güncellenemedi';
+        throw responseData['message'] ?? 'Could not update profile';
       }
     } catch (e) {
       rethrow;
     }
   }
 
-  // Şifre Güncelle
-  static Future<Map<String, dynamic>> updatePassword(
+  // Update Password
+  static Future<void> updatePassword(
       String currentPassword, String newPassword) async {
     try {
       final response = await http.patch(
-        Uri.parse('$baseUrl${ApiConfig.authEndpoint}/update-password'),
+        Uri.parse('$baseUrl${ApiConfig.usersEndpoint}/password'),
         headers: await _getHeaders(),
         body: json.encode({
           'currentPassword': currentPassword,
@@ -454,15 +467,9 @@ class ApiService {
         }),
       );
 
-      final responseData = json.decode(response.body);
-
-      if (response.statusCode == 200) {
-        if (responseData['token'] != null) {
-          await saveToken(responseData['token']);
-        }
-        return responseData['data']['user'];
-      } else {
-        throw responseData['message'] ?? 'Şifre güncellenemedi';
+      if (response.statusCode != 200) {
+        final responseData = json.decode(response.body);
+        throw responseData['message'] ?? 'Could not update password';
       }
     } catch (e) {
       rethrow;

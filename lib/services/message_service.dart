@@ -6,236 +6,301 @@ import 'auth_service.dart';
 class MessageService {
   final AuthService _authService = AuthService();
 
-  // Mock konuşmalar ve mesajlar
-  final List<Map<String, dynamic>> _conversations = [
-    {
-      'user': {
-        '_id': '100',
-        'name': 'Admin User',
-        'email': AuthService.ADMIN_EMAIL
-      },
-      'lastMessage': {
-        '_id': '1',
-        'sender': {'_id': '100', 'name': 'Admin User'},
-        'receiver': {'_id': '1001', 'name': 'Test User'},
-        'content': 'Merhaba, sisteme hoş geldiniz!',
-        'isRead': false,
-        'createdAt':
-            DateTime.now().subtract(const Duration(hours: 2)).toIso8601String(),
-      },
-      'unreadCount': 1,
-    }
-  ];
-
-  // Kullanıcı ID'ye göre mesajlar listesi
-  final Map<String, List<Map<String, dynamic>>> _messages = {
+  // Mock conversations and messages
+  static final Map<String, List<Map<String, dynamic>>> _mockConversations = {
+    // Admin user conversations
     '100': [
-      // Admin kullanıcısı ile olan mesajlar
       {
-        '_id': '1',
+        'id': '1',
         'sender': {'_id': '100', 'name': 'Admin User'},
-        'receiver': {'_id': '1001', 'name': 'Test User'},
-        'content': 'Merhaba, sisteme hoş geldiniz!',
-        'isRead': false,
-        'createdAt':
-            DateTime.now().subtract(const Duration(hours: 2)).toIso8601String(),
-      }
-    ]
+        'receiver': {'_id': '101', 'name': 'Student User'},
+        'message': 'Hello, is the book still available?',
+        'timestamp': DateTime.now().subtract(const Duration(hours: 2)),
+        'read': true,
+      },
+      {
+        'id': '2',
+        'sender': {'_id': '101', 'name': 'Student User'},
+        'receiver': {'_id': '100', 'name': 'Admin User'},
+        'message': 'Yes, it is! Are you interested?',
+        'timestamp': DateTime.now().subtract(const Duration(hours: 1)),
+        'read': false,
+      },
+    ],
   };
 
-  // Get all conversations
-  Future<List<Conversation>> getConversations() async {
+  // Messages list by user ID
+  static final Map<String, List<Message>> _mockMessages = {};
+
+  // Messages with admin user
+  static List<Message> _adminMessages = [
+    Message(
+      id: '1',
+      sender: {'_id': '100', 'name': 'Admin User'},
+      receiver: {'_id': '101', 'name': 'Student User'},
+      content: 'Hello, how can I help you?',
+      createdAt: DateTime.now().subtract(const Duration(minutes: 30)),
+      isRead: true,
+    ),
+    Message(
+      id: '2',
+      sender: {'_id': '101', 'name': 'Student User'},
+      receiver: {'_id': '100', 'name': 'Admin User'},
+      content: 'I have a question about the app.',
+      createdAt: DateTime.now().subtract(const Duration(minutes: 25)),
+      isRead: false,
+    ),
+    Message(
+      id: '3',
+      sender: {'_id': '100', 'name': 'Admin User'},
+      receiver: {'_id': '101', 'name': 'Student User'},
+      content: 'Sure, what would you like to know?',
+      createdAt: DateTime.now().subtract(const Duration(minutes: 20)),
+      isRead: false,
+    ),
+  ];
+
+  // Get user conversations
+  Future<List<Map<String, dynamic>>> getConversations() async {
     try {
-      await Future.delayed(
-          const Duration(seconds: 1)); // API isteği simülasyonu
+      await Future.delayed(const Duration(seconds: 1));
 
       final currentUser = _authService.currentUser;
       if (currentUser == null) {
-        throw Exception('Konuşmalarınızı görmek için giriş yapmalısınız');
+        throw Exception('You must be logged in to view your conversations');
       }
 
-      // Kullanıcının konuşmalarını filtrele
-      final userConversations = _conversations.where((conversation) {
-        final lastMessage = conversation['lastMessage'];
-        return lastMessage['sender']['_id'] == currentUser.id ||
-            lastMessage['receiver']['_id'] == currentUser.id;
-      }).toList();
+      // Filter user conversations
+      List<Map<String, dynamic>> userConversations = [];
 
-      // Konuşmaların karşı tarafını belirle (eğer gönderen kullanıcı ise alıcıyı, alıcı kullanıcı ise göndereni göster)
-      for (var conversation in userConversations) {
-        final lastMessage = conversation['lastMessage'];
-        if (lastMessage['sender']['_id'] == currentUser.id) {
-          conversation['user'] = lastMessage['receiver'];
-        } else {
-          conversation['user'] = lastMessage['sender'];
+      _mockConversations.forEach((userId, messages) {
+        for (var message in messages) {
+          if (message['sender']['_id'] == currentUser.id ||
+              message['receiver']['_id'] == currentUser.id) {
+            // Determine the other party in conversation (if sender is user then show receiver, if receiver is user then show sender)
+            Map<String, dynamic> otherUser =
+                message['sender']['_id'] == currentUser.id
+                    ? message['receiver']
+                    : message['sender'];
+
+            // Check if conversation already exists
+            bool conversationExists = userConversations
+                .any((conv) => conv['otherUser']['_id'] == otherUser['_id']);
+
+            if (!conversationExists) {
+              userConversations.add({
+                'otherUser': otherUser,
+                'lastMessage': message['message'],
+                'timestamp': message['timestamp'],
+                'unreadCount': 1, // Calculate actual unread count in production
+              });
+            }
+          }
         }
-      }
+      });
 
-      return userConversations
-          .map((conversation) => Conversation.fromJson(conversation))
-          .toList();
+      return userConversations;
     } catch (e) {
       rethrow;
     }
   }
 
-  // Get conversation with user
-  Future<Map<String, dynamic>> getConversationWithUser(String userId) async {
+  // Get messages with specific user
+  Future<List<Message>> getMessagesWithUser(String otherUserId) async {
     try {
-      await Future.delayed(
-          const Duration(seconds: 1)); // API isteği simülasyonu
+      await Future.delayed(const Duration(seconds: 1));
 
       final currentUser = _authService.currentUser;
+
+      // If no user is logged in, provide demo messages
       if (currentUser == null) {
-        throw Exception('Mesajlarınızı görmek için giriş yapmalısınız');
-      }
-
-      // Kullanıcı bilgilerini bul
-      Map<String, dynamic>? user;
-      for (var conversation in _conversations) {
-        final lastMessage = conversation['lastMessage'];
-        if ((lastMessage['sender']['_id'] == userId &&
-                lastMessage['receiver']['_id'] == currentUser.id) ||
-            (lastMessage['receiver']['_id'] == userId &&
-                lastMessage['sender']['_id'] == currentUser.id)) {
-          if (lastMessage['sender']['_id'] == userId) {
-            user = lastMessage['sender'];
-          } else {
-            user = lastMessage['receiver'];
-          }
-          break;
+        // For demo purposes, return admin messages when no user is logged in
+        if (otherUserId == '100') {
+          return List.from(_adminMessages);
         }
+
+        // For other users, return empty list
+        return [];
       }
 
-      // Yeni bir kullanıcı ile konuşma başlatıldığında
-      if (user == null) {
-        // Yeni bir kullanıcı oluştur (gerçekte API'den gelecek)
-        user = {
-          '_id': userId,
-          'name': 'Yeni Kullanıcı',
-          'email': 'user@example.com'
+      // Find user info
+      Map<String, dynamic> otherUser = {
+        '_id': otherUserId,
+        'name': 'Other User',
+        'email': 'other@example.com'
+      };
+
+      // If new conversation is started with a user
+      if (otherUserId == 'new_user') {
+        // Create a new user (in production this will come from API)
+        otherUser = {
+          '_id': 'new_user_id',
+          'name': 'New User',
+          'email': 'newuser@example.com'
         };
       }
 
-      // İki kullanıcı arasındaki tüm mesajları bul
-      List<Map<String, dynamic>> allUserMessages = [];
+      // Find all messages between two users
+      List<Message> conversationMessages = [];
 
-      // Her kullanıcının mesajlarını kontrol et
-      _messages.forEach((key, messagesList) {
-        for (var message in messagesList) {
-          if ((message['sender']['_id'] == currentUser.id &&
-                  message['receiver']['_id'] == userId) ||
-              (message['receiver']['_id'] == currentUser.id &&
-                  message['sender']['_id'] == userId)) {
-            allUserMessages.add(message);
+      // Check messages of each user
+      [currentUser.id, otherUserId].forEach((userId) {
+        if (_mockMessages.containsKey(userId)) {
+          for (var message in _mockMessages[userId]!) {
+            if ((message.sender['_id'] == currentUser.id &&
+                    message.receiver['_id'] == otherUserId) ||
+                (message.sender['_id'] == otherUserId &&
+                    message.receiver['_id'] == currentUser.id)) {
+              conversationMessages.add(message);
+            }
           }
         }
       });
 
-      // Mesajları tarih sırasına göre sırala
-      allUserMessages.sort((a, b) {
-        DateTime aDate = DateTime.parse(a['createdAt']);
-        DateTime bDate = DateTime.parse(b['createdAt']);
-        return aDate.compareTo(bDate);
-      });
+      // Sort messages by date
+      conversationMessages.sort((a, b) => a.createdAt.compareTo(b.createdAt));
 
-      // Mesajları okundu olarak işaretle (sadece alınan mesajlar)
-      for (var message in allUserMessages) {
-        if (message['receiver']['_id'] == currentUser.id) {
-          message['isRead'] = true;
+      // If no messages found, return admin messages for demo
+      if (conversationMessages.isEmpty && otherUserId == '100') {
+        // Mark messages as read (only received messages)
+        for (var message in _adminMessages) {
+          if (message.receiver['_id'] == currentUser.id) {
+            // Note: In a real app, you'd create a new Message with isRead: true
+            // For now, we'll just return the messages as they are
+          }
         }
+
+        // Update unread message count
+        return List.from(_adminMessages);
       }
 
-      // Okunmamış mesaj sayısını güncelle
-      for (var conversation in _conversations) {
-        final lastMessage = conversation['lastMessage'];
-        if ((lastMessage['sender']['_id'] == userId &&
-                lastMessage['receiver']['_id'] == currentUser.id) ||
-            (lastMessage['receiver']['_id'] == userId &&
-                lastMessage['sender']['_id'] == currentUser.id)) {
-          conversation['unreadCount'] = 0;
-          break;
-        }
-      }
-
-      final messages = allUserMessages
-          .map<Message>((message) => Message.fromJson(message))
-          .toList();
-
-      return {
-        'user': user,
-        'messages': messages,
-      };
+      return conversationMessages;
     } catch (e) {
       rethrow;
     }
   }
 
   // Send message
-  Future<Message> sendMessage(String receiverId, String content,
-      {String? relatedBookId}) async {
+  Future<Message> sendMessage(String receiverId, String content) async {
     try {
-      await Future.delayed(
-          const Duration(seconds: 1)); // API isteği simülasyonu
+      await Future.delayed(const Duration(seconds: 1));
 
       final currentUser = _authService.currentUser;
-      if (currentUser == null) {
-        throw Exception('Mesaj göndermek için giriş yapmalısınız');
-      }
 
-      // Yeni mesaj oluştur
-      final messageId = DateTime.now().millisecondsSinceEpoch.toString();
-      final messageData = {
-        '_id': messageId,
-        'sender': {
+      // Create message sender info - use guest info if no user is logged in
+      Map<String, dynamic> senderInfo;
+      if (currentUser == null) {
+        senderInfo = {
+          '_id': 'guest_user',
+          'name': 'Guest User',
+          'email': 'guest@example.com'
+        };
+      } else {
+        senderInfo = {
           '_id': currentUser.id,
           'name': currentUser.name,
           'email': currentUser.email
-        },
-        'receiver': {'_id': receiverId, 'name': 'Alıcı Kullanıcı'},
-        'content': content,
-        'relatedBook': relatedBookId != null ? {'_id': relatedBookId} : null,
-        'isRead': false,
-        'createdAt': DateTime.now().toIso8601String(),
-      };
-
-      // Mesajı ekle - gönderenin ID'si ile
-      if (!_messages.containsKey(currentUser.id)) {
-        _messages[currentUser.id] = [];
-      }
-      _messages[currentUser.id]!.add(messageData);
-
-      // Konuşmayı güncelle veya ekle
-      bool conversationExists = false;
-      for (var conversation in _conversations) {
-        final lastMessage = conversation['lastMessage'];
-        if ((lastMessage['sender']['_id'] == receiverId &&
-                lastMessage['receiver']['_id'] == currentUser.id) ||
-            (lastMessage['receiver']['_id'] == receiverId &&
-                lastMessage['sender']['_id'] == currentUser.id)) {
-          conversation['lastMessage'] = messageData;
-          // Alıcı tarafındaki okunmamış mesaj sayısını artır
-          if (lastMessage['receiver']['_id'] == receiverId) {
-            conversation['unreadCount'] =
-                (conversation['unreadCount'] ?? 0) + 1;
-          }
-          conversationExists = true;
-          break;
-        }
+        };
       }
 
-      // Yeni konuşma oluştur
-      if (!conversationExists) {
-        _conversations.add({
-          'user': {'_id': receiverId, 'name': 'Alıcı Kullanıcı'},
-          'lastMessage': messageData,
-          'unreadCount': 1,
+      // Create new message
+      final newMessage = Message(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        sender: senderInfo,
+        receiver: {'_id': receiverId, 'name': 'Receiver User'},
+        content: content,
+        createdAt: DateTime.now(),
+        isRead: false,
+      );
+
+      // For demo purposes, we'll add a mock response
+      final responseMessage = Message(
+        id: (DateTime.now().millisecondsSinceEpoch + 1).toString(),
+        sender: {'_id': receiverId, 'name': 'Receiver User'},
+        receiver: senderInfo,
+        content: 'Thank you for your message! I will get back to you soon.',
+        createdAt: DateTime.now().add(const Duration(seconds: 5)),
+        isRead: false,
+      );
+
+      // Add message - with sender's ID
+      String senderId = senderInfo['_id'];
+      if (!_mockMessages.containsKey(senderId)) {
+        _mockMessages[senderId] = [];
+      }
+      _mockMessages[senderId]!.add(newMessage);
+
+      // Add response message
+      if (!_mockMessages.containsKey(receiverId)) {
+        _mockMessages[receiverId] = [];
+      }
+      _mockMessages[receiverId]!.add(responseMessage);
+
+      // If sending to admin (id: '100'), also add to admin messages for immediate visibility
+      if (receiverId == '100') {
+        _adminMessages.add(newMessage);
+
+        // Add a delayed response to admin messages
+        Future.delayed(const Duration(seconds: 2), () {
+          _adminMessages.add(responseMessage);
         });
       }
 
-      return Message.fromJson(messageData);
+      return newMessage;
     } catch (e) {
       rethrow;
+    }
+  }
+
+  // Get unread message count
+  Future<int> getUnreadMessageCount() async {
+    try {
+      await Future.delayed(const Duration(seconds: 1));
+
+      final currentUser = _authService.currentUser;
+      if (currentUser == null) {
+        return 0;
+      }
+
+      int unreadCount = 0;
+
+      // Count unread messages in all conversations
+      _mockConversations.forEach((userId, messages) {
+        for (var message in messages) {
+          if (message['receiver']['_id'] == currentUser.id &&
+              !message['read']) {
+            unreadCount++;
+          }
+        }
+      });
+
+      return unreadCount;
+    } catch (e) {
+      return 0;
+    }
+  }
+
+  // Mark message as read
+  Future<void> markMessageAsRead(String messageId) async {
+    try {
+      await Future.delayed(const Duration(seconds: 1));
+
+      final currentUser = _authService.currentUser;
+      if (currentUser == null) {
+        return;
+      }
+
+      // Find and mark message as read in admin messages
+      for (var message in _adminMessages) {
+        if (message.id == messageId &&
+            message.receiver['_id'] == currentUser.id) {
+          // Note: In a real app, you'd update the message in the database
+          // For now, we can't modify the isRead property as it's final
+          break;
+        }
+      }
+    } catch (e) {
+      // Handle error silently for read status
     }
   }
 }
