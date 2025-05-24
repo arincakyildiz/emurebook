@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:emurebook/services/service_provider.dart';
+import 'package:emurebook/widgets/loading_indicator.dart';
+import 'package:emurebook/widgets/error_display.dart';
 import 'home_layout.dart';
 import 'sign_up_screen.dart';
 
@@ -13,6 +16,10 @@ class _LoginScreenState extends State<LoginScreen> {
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
   bool obscurePassword = true;
+  bool isLoading = false;
+  String? errorMessage;
+
+  final _authService = ServiceProvider().authService;
 
   @override
   void dispose() {
@@ -21,8 +28,46 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  Future<void> _login() async {
+    final email = emailController.text.trim();
+    final password = passwordController.text;
+
+    if (email.isEmpty || password.isEmpty) {
+      setState(() {
+        errorMessage = 'Lütfen email ve şifrenizi giriniz.';
+      });
+      return;
+    }
+
+    setState(() {
+      isLoading = true;
+      errorMessage = null;
+    });
+
+    try {
+      await _authService.login(email, password);
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const HomeLayout()),
+        );
+      }
+    } catch (e) {
+      setState(() {
+        errorMessage = e.toString();
+        isLoading = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (isLoading) {
+      return const Scaffold(
+        body: LoadingIndicator(message: 'Giriş yapılıyor...'),
+      );
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFFF7F9FC),
       body: SafeArea(
@@ -45,6 +90,15 @@ class _LoginScreenState extends State<LoginScreen> {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 32),
+              if (errorMessage != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 16.0),
+                  child: Text(
+                    errorMessage!,
+                    style: const TextStyle(color: Colors.red),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
               _buildTextField(
                 controller: emailController,
                 label: 'Email',
@@ -60,12 +114,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 24),
               ElevatedButton(
-                onPressed: () {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (_) => const HomeLayout()),
-                  );
-                },
+                onPressed: _login,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF2D66F4),
                   padding: const EdgeInsets.symmetric(vertical: 16),
@@ -135,20 +184,19 @@ class _LoginScreenState extends State<LoginScreen> {
         decoration: InputDecoration(
           hintText: label,
           prefixIcon: Icon(icon),
-          suffixIcon:
-              isPassword
-                  ? IconButton(
-                    icon: Icon(
-                      obscureText ? Icons.visibility_off : Icons.visibility,
-                      color: Colors.grey,
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        obscurePassword = !obscurePassword;
-                      });
-                    },
-                  )
-                  : null,
+          suffixIcon: isPassword
+              ? IconButton(
+                  icon: Icon(
+                    obscureText ? Icons.visibility_off : Icons.visibility,
+                    color: Colors.grey,
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      obscurePassword = !obscurePassword;
+                    });
+                  },
+                )
+              : null,
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
           filled: true,
           fillColor: Colors.white,

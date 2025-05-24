@@ -1,9 +1,16 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:emurebook/services/service_provider.dart';
+import 'package:emurebook/models/user_model.dart';
 
 class EditProfileScreen extends StatefulWidget {
-  const EditProfileScreen({super.key});
+  final VoidCallback? onProfileUpdated;
+
+  const EditProfileScreen({
+    super.key,
+    this.onProfileUpdated,
+  });
 
   @override
   State<EditProfileScreen> createState() => _EditProfileScreenState();
@@ -15,17 +22,42 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  final _departmentController = TextEditingController();
+  final _studentIdController = TextEditingController();
+  final _phoneController = TextEditingController();
+
+  final _authService = ServiceProvider().authService;
+
   File? _profileImage;
   bool _isLoading = false;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
+  bool _isChangePassword = false;
+  String? _currentPassword;
 
   @override
   void initState() {
     super.initState();
-    // TODO: Load existing profile data
-    _nameController.text = 'Ahmet Arınç Akyıldız';
-    _emailController.text = '22000257@emu.edu.tr';
+    _loadUserData();
+  }
+
+  void _loadUserData() {
+    final currentUser = _authService.currentUser;
+    if (currentUser != null) {
+      setState(() {
+        _nameController.text = currentUser.name;
+        _emailController.text = currentUser.email;
+        if (currentUser.department != null) {
+          _departmentController.text = currentUser.department!;
+        }
+        if (currentUser.studentId != null) {
+          _studentIdController.text = currentUser.studentId!;
+        }
+        if (currentUser.phone != null) {
+          _phoneController.text = currentUser.phone!;
+        }
+      });
+    }
   }
 
   @override
@@ -34,6 +66,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
+    _departmentController.dispose();
+    _studentIdController.dispose();
+    _phoneController.dispose();
     super.dispose();
   }
 
@@ -45,7 +80,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       maxHeight: 800,
       imageQuality: 85,
     );
-    
+
     if (image != null) {
       setState(() {
         _profileImage = File(image.path);
@@ -60,9 +95,29 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       });
 
       try {
-        // TODO: Implement actual profile update logic
-        await Future.delayed(const Duration(seconds: 1)); // Simulated delay
-        
+        // Profil bilgilerini güncelle
+        final userData = {
+          'name': _nameController.text,
+          'email': _emailController.text,
+          'department': _departmentController.text,
+          'studentId': _studentIdController.text,
+          'phone': _phoneController.text,
+        };
+
+        await _authService.updateProfile(userData);
+
+        // Şifre değişikliği varsa
+        if (_isChangePassword &&
+            _passwordController.text.isNotEmpty &&
+            _currentPassword != null) {
+          await _authService.updatePassword(
+              _currentPassword!, _passwordController.text);
+        }
+
+        if (widget.onProfileUpdated != null) {
+          widget.onProfileUpdated!();
+        }
+
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -89,6 +144,50 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         }
       }
     }
+  }
+
+  void _showPasswordDialog() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        String currentPassword = '';
+
+        return AlertDialog(
+          title: const Text('Enter Current Password'),
+          content: TextField(
+            obscureText: true,
+            onChanged: (value) {
+              currentPassword = value;
+            },
+            decoration: const InputDecoration(
+              labelText: 'Current Password',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                setState(() {
+                  _isChangePassword = true;
+                  _currentPassword = currentPassword;
+                });
+                Navigator.pop(context);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF2D66F4),
+              ),
+              child: const Text('Confirm'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -204,66 +303,117 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 },
               ),
               const SizedBox(height: 16),
-              // Password Field
+              // Department Field
               TextFormField(
-                controller: _passwordController,
-                obscureText: _obscurePassword,
-                decoration: InputDecoration(
-                  labelText: 'New Password',
-                  border: const OutlineInputBorder(),
-                  prefixIcon: const Icon(Icons.lock_outline),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        _obscurePassword = !_obscurePassword;
-                      });
-                    },
-                  ),
+                controller: _departmentController,
+                decoration: const InputDecoration(
+                  labelText: 'Department',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.business),
                 ),
-                validator: (value) {
-                  if (value != null && value.isNotEmpty) {
-                    if (value.length < 6) {
-                      return 'Password must be at least 6 characters';
-                    }
-                  }
-                  return null;
-                },
               ),
               const SizedBox(height: 16),
-              // Confirm Password Field
+              // Student ID Field
               TextFormField(
-                controller: _confirmPasswordController,
-                obscureText: _obscureConfirmPassword,
-                decoration: InputDecoration(
-                  labelText: 'Confirm New Password',
-                  border: const OutlineInputBorder(),
-                  prefixIcon: const Icon(Icons.lock_outline),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      _obscureConfirmPassword ? Icons.visibility_off : Icons.visibility,
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        _obscureConfirmPassword = !_obscureConfirmPassword;
-                      });
-                    },
-                  ),
+                controller: _studentIdController,
+                decoration: const InputDecoration(
+                  labelText: 'Student ID',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.badge),
                 ),
-                validator: (value) {
-                  if (_passwordController.text.isNotEmpty) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please confirm your password';
-                    }
-                    if (value != _passwordController.text) {
-                      return 'Passwords do not match';
-                    }
-                  }
-                  return null;
-                },
               ),
+              const SizedBox(height: 16),
+              // Phone Field
+              TextFormField(
+                controller: _phoneController,
+                decoration: const InputDecoration(
+                  labelText: 'Phone',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.phone),
+                ),
+              ),
+              const SizedBox(height: 16),
+              // Change Password Button
+              OutlinedButton.icon(
+                onPressed: _showPasswordDialog,
+                icon: const Icon(Icons.lock_outline),
+                label: const Text('Change Password'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF2D66F4),
+                  side: const BorderSide(color: Color(0xFF2D66F4)),
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                ),
+              ),
+
+              if (_isChangePassword) ...[
+                const SizedBox(height: 16),
+                // Password Field
+                TextFormField(
+                  controller: _passwordController,
+                  obscureText: _obscurePassword,
+                  decoration: InputDecoration(
+                    labelText: 'New Password',
+                    border: const OutlineInputBorder(),
+                    prefixIcon: const Icon(Icons.lock_outline),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscurePassword
+                            ? Icons.visibility_off
+                            : Icons.visibility,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _obscurePassword = !_obscurePassword;
+                        });
+                      },
+                    ),
+                  ),
+                  validator: (value) {
+                    if (value != null && value.isNotEmpty) {
+                      if (value.length < 6) {
+                        return 'Password must be at least 6 characters';
+                      }
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+                // Confirm Password Field
+                TextFormField(
+                  controller: _confirmPasswordController,
+                  obscureText: _obscureConfirmPassword,
+                  decoration: InputDecoration(
+                    labelText: 'Confirm New Password',
+                    border: const OutlineInputBorder(),
+                    prefixIcon: const Icon(Icons.lock_outline),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscureConfirmPassword
+                            ? Icons.visibility_off
+                            : Icons.visibility,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _obscureConfirmPassword = !_obscureConfirmPassword;
+                        });
+                      },
+                    ),
+                  ),
+                  validator: (value) {
+                    if (_passwordController.text.isNotEmpty) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please confirm your password';
+                      }
+                      if (value != _passwordController.text) {
+                        return 'Passwords do not match';
+                      }
+                    }
+                    return null;
+                  },
+                ),
+              ],
+
               const SizedBox(height: 32),
               // Save Button
               SizedBox(
@@ -302,4 +452,4 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       ),
     );
   }
-} 
+}

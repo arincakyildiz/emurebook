@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:emurebook/services/service_provider.dart';
+import 'package:emurebook/widgets/loading_indicator.dart';
 import 'login_screen.dart';
 import 'home_layout.dart';
 
@@ -18,6 +20,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final departmentController = TextEditingController();
   bool obscurePassword = true;
   String? selectedDepartment;
+  bool isLoading = false;
+  String? errorMessage;
+
+  final _authService = ServiceProvider().authService;
 
   final List<String> departments = [
     'Computer Engineering',
@@ -45,8 +51,67 @@ class _SignUpScreenState extends State<SignUpScreen> {
     super.dispose();
   }
 
+  Future<void> _register() async {
+    // Form validation
+    if (nameController.text.isEmpty ||
+        studentIdController.text.isEmpty ||
+        emailController.text.isEmpty ||
+        phoneController.text.isEmpty ||
+        selectedDepartment == null ||
+        passwordController.text.isEmpty) {
+      setState(() {
+        errorMessage = 'Lütfen tüm alanları doldurunuz.';
+      });
+      return;
+    }
+
+    // Email validation
+    if (!emailController.text.endsWith('@emu.edu.tr')) {
+      setState(() {
+        errorMessage = 'Lütfen EMU email adresinizi kullanınız.';
+      });
+      return;
+    }
+
+    setState(() {
+      isLoading = true;
+      errorMessage = null;
+    });
+
+    try {
+      final userData = {
+        'name': nameController.text.trim(),
+        'email': emailController.text.trim(),
+        'password': passwordController.text,
+        'studentId': studentIdController.text.trim(),
+        'phone': phoneController.text.trim(),
+        'department': selectedDepartment,
+      };
+
+      await _authService.register(userData);
+
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const HomeLayout()),
+        );
+      }
+    } catch (e) {
+      setState(() {
+        errorMessage = e.toString();
+        isLoading = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (isLoading) {
+      return const Scaffold(
+        body: LoadingIndicator(message: 'Hesabınız oluşturuluyor...'),
+      );
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFFF7F9FC),
       body: SafeArea(
@@ -68,7 +133,16 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 24),
+              if (errorMessage != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 16.0),
+                  child: Text(
+                    errorMessage!,
+                    style: const TextStyle(color: Colors.red),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
               _buildTextField(
                 controller: nameController,
                 label: 'Full Name',
@@ -101,7 +175,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: const [
-                    BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2)),
+                    BoxShadow(
+                        color: Colors.black12,
+                        blurRadius: 4,
+                        offset: Offset(0, 2)),
                   ],
                 ),
                 child: DropdownButtonFormField<String>(
@@ -110,10 +187,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   decoration: InputDecoration(
                     hintText: 'Select Department',
                     prefixIcon: const Icon(Icons.school_outlined),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12)),
                     filled: true,
                     fillColor: Colors.white,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    contentPadding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   ),
                   items: departments.map((String department) {
                     return DropdownMenuItem<String>(
@@ -142,39 +221,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
               ),
               const SizedBox(height: 24),
               ElevatedButton(
-                onPressed: () {
-                  // Form validation
-                  if (nameController.text.isEmpty ||
-                      studentIdController.text.isEmpty ||
-                      emailController.text.isEmpty ||
-                      phoneController.text.isEmpty ||
-                      selectedDepartment == null ||
-                      passwordController.text.isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Please fill in all fields'),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
-                    return;
-                  }
-                  
-                  // Email validation
-                  if (!emailController.text.endsWith('@emu.edu.tr')) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Please use your EMU email address'),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
-                    return;
-                  }
-
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (_) => const HomeLayout()),
-                  );
-                },
+                onPressed: _register,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF2D66F4),
                   padding: const EdgeInsets.symmetric(vertical: 16),
@@ -246,20 +293,19 @@ class _SignUpScreenState extends State<SignUpScreen> {
         decoration: InputDecoration(
           hintText: label,
           prefixIcon: Icon(icon),
-          suffixIcon:
-              isPassword
-                  ? IconButton(
-                    icon: Icon(
-                      obscureText ? Icons.visibility_off : Icons.visibility,
-                      color: Colors.grey,
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        obscurePassword = !obscurePassword;
-                      });
-                    },
-                  )
-                  : null,
+          suffixIcon: isPassword
+              ? IconButton(
+                  icon: Icon(
+                    obscureText ? Icons.visibility_off : Icons.visibility,
+                    color: Colors.grey,
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      obscurePassword = !obscurePassword;
+                    });
+                  },
+                )
+              : null,
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
           filled: true,
           fillColor: Colors.white,
