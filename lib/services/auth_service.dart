@@ -57,9 +57,49 @@ class AuthService {
         _currentUser = _createUserFromData(savedUserData);
         _authStateController.add(true);
       } else {
-        _currentUser = null;
-        _authStateController.add(false);
+        // For development: automatically create and log in a test user
+        await _createDefaultTestUser();
       }
+    } catch (e) {
+      // If there's any error, create a default test user
+      await _createDefaultTestUser();
+    }
+  }
+
+  // Create and log in a default test user for development
+  Future<void> _createDefaultTestUser() async {
+    try {
+      final testUserData = {
+        'id': 'test_user_123',
+        'name': 'John Doe',
+        'email': 'john.doe@emu.edu.tr',
+        'password': 'test123',
+        'department': 'Computer Engineering',
+        'studentId': 'EMU2024001',
+        'phone': '555-123-4567',
+        'role': 'user',
+        'favoriteBooks': [],
+        'createdAt': DateTime.now().toIso8601String(),
+      };
+
+      // Add to registered users if not already exists
+      final existingUser = _registeredUsers
+          .where((user) => user['id'] == testUserData['id'])
+          .toList();
+
+      if (existingUser.isEmpty) {
+        _registeredUsers.add(testUserData);
+      }
+
+      _currentUser = _createUserFromData(testUserData);
+
+      // Save token for persistence
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      final token = 'test-token-${DateTime.now().millisecondsSinceEpoch}';
+      await prefs.setString('auth_token', token);
+      await prefs.setString('user_id', testUserData['id'] as String);
+
+      _authStateController.add(true);
     } catch (e) {
       _currentUser = null;
       _authStateController.add(false);

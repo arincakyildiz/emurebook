@@ -1,4 +1,8 @@
 import '../models/book_model.dart';
+import 'dart:io';
+import 'package:flutter/material.dart';
+import 'service_provider.dart';
+import 'auth_service.dart';
 
 class BookService {
   static final BookService _instance = BookService._internal();
@@ -8,19 +12,56 @@ class BookService {
   // Simple static book list
   static final List<Book> _books = [];
 
+  // Get AuthService from ServiceProvider
+  AuthService get _authService => ServiceProvider().authService;
+
   // Add a book
-  Future<Book> addBook(String title, String author, double price) async {
+  Future<Book> addBook(
+    String title,
+    String author,
+    double price, {
+    String? description,
+    File? imageFile,
+    String exchangeType = 'Sell',
+  }) async {
+    // For now, we'll just use a placeholder image path or the provided file path
+    String imageUrl = 'assets/images/emu_logo.png';
+    if (imageFile != null) {
+      // In a real app, you would upload this to a server and get back a URL
+      // For now, we'll just use the file path
+      imageUrl = imageFile.path;
+    }
+
+    // Get current user information
+    final currentUser = _authService.currentUser;
+    Map<String, dynamic> owner;
+
+    if (currentUser != null) {
+      owner = {
+        '_id': currentUser.id,
+        'name': currentUser.name,
+        'email': currentUser.email,
+      };
+    } else {
+      // Create a default test user instead of guest
+      owner = {
+        '_id': 'test_user_1',
+        'name': 'Test User',
+        'email': 'test@emu.edu.tr'
+      };
+    }
+
     final newBook = Book(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       title: title,
       author: author,
-      description: 'A book by $author',
-      imageUrl: 'assets/images/emu_logo.png',
+      description: description ?? 'A book by $author',
+      imageUrl: imageUrl,
       condition: 'Good',
       price: price,
       category: 'General',
-      exchangeType: 'Sell',
-      owner: {'_id': 'user1', 'name': 'User', 'email': 'user@example.com'},
+      exchangeType: exchangeType,
+      owner: owner,
       language: 'English',
       availability: true,
       createdAt: DateTime.now(),
@@ -33,6 +74,38 @@ class BookService {
   // Get all books
   Future<List<Book>> getAllBooks() async {
     return List.from(_books);
+  }
+
+  // Get books formatted for home screen display
+  Future<List<Map<String, dynamic>>> getBooksForHomeScreen() async {
+    return _books
+        .map((book) => {
+              'title': book.title,
+              'author': book.author,
+              'price': book.price.toInt(),
+              'image': book.imageUrl ?? 'assets/images/emu_logo.png',
+              'label': book.exchangeType.toUpperCase(),
+              'labelColor':
+                  book.exchangeType == 'Sell' ? Colors.green : Colors.blue,
+              'description': book.description ?? 'No description available.',
+              'rating': book.averageRating,
+              'reviews': book.ratings?.length ?? 0,
+              'condition': book.condition,
+              'owner': book.owner,
+              'availability': book.availability,
+              'createdAt': book.createdAt,
+              'exchangeType': book.exchangeType,
+            })
+        .toList();
+  }
+
+  // Get recently added books (last 10)
+  Future<List<Map<String, dynamic>>> getRecentlyAddedBooks() async {
+    final allBooks = await getBooksForHomeScreen();
+    // Sort by creation date (newest first) and take last 10
+    allBooks.sort((a, b) =>
+        (b['createdAt'] as DateTime).compareTo(a['createdAt'] as DateTime));
+    return allBooks.take(10).toList();
   }
 
   // Get count

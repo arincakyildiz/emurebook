@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import './rate_screen.dart';
+import 'dart:io';
 
 class BookDetailScreen extends StatefulWidget {
   final Map<String, dynamic> book;
@@ -40,6 +41,37 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
     });
   }
 
+  Widget _buildBookImage(String imagePath) {
+    // Check if it's a file path (starts with '/' or contains ':' for Windows)
+    if (imagePath.startsWith('/') || imagePath.contains(':')) {
+      final file = File(imagePath);
+      if (file.existsSync()) {
+        return Image.file(
+          file,
+          fit: BoxFit.cover,
+        );
+      }
+    }
+
+    // Check if it's an asset or fallback to asset
+    return Image.asset(
+      imagePath.startsWith('assets/')
+          ? imagePath
+          : 'assets/images/emu_logo.png',
+      fit: BoxFit.cover,
+      errorBuilder: (context, error, stackTrace) {
+        return Container(
+          color: Colors.grey[300],
+          child: const Icon(
+            Icons.book,
+            size: 100,
+            color: Colors.grey,
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final book = widget.book;
@@ -56,10 +88,7 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
               background: Stack(
                 fit: StackFit.expand,
                 children: [
-                  Image.asset(
-                    book['image'],
-                    fit: BoxFit.cover,
-                  ),
+                  _buildBookImage(book['image']),
                   Container(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
@@ -187,7 +216,8 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
                                       children: [
                                         Text(
                                           lang['reviews'] ?? 'Reviews',
@@ -198,7 +228,8 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
                                         ),
                                         IconButton(
                                           icon: const Icon(Icons.close),
-                                          onPressed: () => Navigator.pop(context),
+                                          onPressed: () =>
+                                              Navigator.pop(context),
                                         ),
                                       ],
                                     ),
@@ -218,7 +249,8 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
                                           ),
                                           const SizedBox(width: 12),
                                           Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
                                             children: [
                                               Text(
                                                 book['rating'].toString(),
@@ -226,7 +258,7 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
                                                   fontSize: 24,
                                                   fontWeight: FontWeight.bold,
                                                 ),
-                                    ),
+                                              ),
                                               Text(
                                                 '${book['reviews']} ${lang['reviews'] ?? 'reviews'}',
                                                 style: const TextStyle(
@@ -246,21 +278,24 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
                                             _buildReviewItem(
                                               name: 'Ali Veli',
                                               rating: 5,
-                                              comment: 'Çok iyi kitap! Temiz ve yeni gibi.',
+                                              comment:
+                                                  'Çok iyi kitap! Temiz ve yeni gibi.',
                                               date: '2 gün önce',
                                             ),
                                             const Divider(),
                                             _buildReviewItem(
                                               name: 'John Doe',
                                               rating: 4,
-                                              comment: 'Very useful and clean. The book is in perfect condition.',
+                                              comment:
+                                                  'Very useful and clean. The book is in perfect condition.',
                                               date: '1 hafta önce',
                                             ),
                                             const Divider(),
                                             _buildReviewItem(
                                               name: 'Ayşe Yılmaz',
                                               rating: 5,
-                                              comment: 'Harika bir kitap, çok memnun kaldım.',
+                                              comment:
+                                                  'Harika bir kitap, çok memnun kaldım.',
                                               date: '2 hafta önce',
                                             ),
                                           ],
@@ -384,7 +419,8 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
                           context: context,
                           builder: (context) => AlertDialog(
                             title: Text(lang['buy'] ?? 'Buy'),
-                            content: Text(lang['purchaseSuccess'] ?? 'Purchase completed successfully!'),
+                            content: Text(lang['purchaseSuccess'] ??
+                                'Purchase completed successfully!'),
                             actions: [
                               TextButton(
                                 onPressed: () => Navigator.pop(context),
@@ -395,7 +431,8 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
                         );
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (_) => RateScreen(lang: lang)),
+                          MaterialPageRoute(
+                              builder: (_) => RateScreen(lang: lang)),
                         );
                       },
                       style: ElevatedButton.styleFrom(
@@ -428,7 +465,8 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
                   showDialog(
                     context: context,
                     builder: (context) {
-                      TextEditingController _msgController = TextEditingController();
+                      TextEditingController _msgController =
+                          TextEditingController();
                       return AlertDialog(
                         title: Text(lang['messageSeller'] ?? 'Message Seller'),
                         content: TextField(
@@ -451,7 +489,9 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
                                 onMessageSent!(_msgController.text);
                               }
                               ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text(lang['messageSent'] ?? 'Message sent!')),
+                                SnackBar(
+                                    content: Text(lang['messageSent'] ??
+                                        'Message sent!')),
                               );
                             },
                             child: Text(
@@ -594,5 +634,6 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
 }
 
 extension BookDetailScreenFavorites on BookDetailScreen {
-  static List<Map<String, dynamic>> get favoriteBooks => _BookDetailScreenState._favoriteBooks;
+  static List<Map<String, dynamic>> get favoriteBooks =>
+      _BookDetailScreenState._favoriteBooks;
 }

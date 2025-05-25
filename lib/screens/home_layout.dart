@@ -16,6 +16,7 @@ class _HomeLayoutState extends State<HomeLayout> {
   int _currentIndex = 0;
   String _selectedLanguage = 'English';
   List<String> _notifications = [];
+  VoidCallback? _refreshHomeScreen;
 
   void _updateLanguage(String newLanguage) {
     setState(() {
@@ -170,6 +171,11 @@ class _HomeLayoutState extends State<HomeLayout> {
     });
   }
 
+  void _onBookAdded() {
+    // Refresh the home screen when a book is added
+    _refreshHomeScreen?.call();
+  }
+
   @override
   Widget build(BuildContext context) {
     final lang = localized[_selectedLanguage]!;
@@ -180,11 +186,13 @@ class _HomeLayoutState extends State<HomeLayout> {
         onMessageSent: addNotification,
         onLanguageChanged: _updateLanguage,
         notifications: _notifications,
+        onRefreshCallback: (callback) => _refreshHomeScreen = callback,
       ),
       ListingsScreen(
         lang: lang,
         onMessageSent: addNotification,
         showOnlyMine: true,
+        onBookAdded: _onBookAdded,
       ),
       FavoritesScreen(lang: lang),
       MessagesScreen(lang: lang),

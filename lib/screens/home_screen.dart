@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'book_detail_screen.dart';
 import 'all_books_screen.dart';
-
+import '../services/book_service.dart';
+import 'dart:io';
 
 class HomeScreen extends StatefulWidget {
   final Map<String, String> lang;
@@ -9,7 +10,15 @@ class HomeScreen extends StatefulWidget {
   final void Function(String) onMessageSent;
   final void Function(String) onLanguageChanged;
   final List<String> notifications;
-  const HomeScreen({super.key, required this.lang, required this.selectedLanguage, required this.onMessageSent, required this.onLanguageChanged, required this.notifications});
+  final void Function(VoidCallback)? onRefreshCallback;
+  const HomeScreen(
+      {super.key,
+      required this.lang,
+      required this.selectedLanguage,
+      required this.onMessageSent,
+      required this.onLanguageChanged,
+      required this.notifications,
+      this.onRefreshCallback});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -18,12 +27,77 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   RangeValues _priceRange = const RangeValues(0, 1000);
   String _selectedCondition = 'All';
+  String _selectedExchangeType = 'All'; // All, Sell, Exchange
   String _searchQuery = '';
+  final BookService _bookService = BookService();
+  List<Map<String, dynamic>> _userAddedBooks = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserBooks();
+    widget.onRefreshCallback?.call(refreshBooks);
+  }
+
+  Future<void> _loadUserBooks() async {
+    try {
+      final userBooks = await _bookService.getRecentlyAddedBooks();
+      if (mounted) {
+        setState(() {
+          _userAddedBooks = userBooks;
+        });
+      }
+    } catch (e) {
+      // Handle error silently for now
+    }
+  }
+
+  // Public method to refresh books from outside
+  void refreshBooks() {
+    _loadUserBooks();
+  }
 
   void addNotification(String msg) {
     setState(() {
       widget.notifications.insert(0, msg);
     });
+  }
+
+  Widget _buildBookImage(String imagePath, {double? width, double? height}) {
+    // Check if it's a file path (starts with '/' or contains ':' for Windows)
+    if (imagePath.startsWith('/') || imagePath.contains(':')) {
+      final file = File(imagePath);
+      if (file.existsSync()) {
+        return Image.file(
+          file,
+          height: height,
+          width: width ?? double.infinity,
+          fit: BoxFit.cover,
+        );
+      }
+    }
+
+    // Check if it's an asset or fallback to asset
+    return Image.asset(
+      imagePath.startsWith('assets/')
+          ? imagePath
+          : 'assets/images/emu_logo.png',
+      height: height,
+      width: width ?? double.infinity,
+      fit: BoxFit.cover,
+      errorBuilder: (context, error, stackTrace) {
+        return Container(
+          height: height,
+          width: width ?? double.infinity,
+          color: Colors.grey[300],
+          child: const Icon(
+            Icons.book,
+            size: 50,
+            color: Colors.grey,
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -41,6 +115,7 @@ class _HomeScreenState extends State<HomeScreen> {
         'rating': 4.5,
         'reviews': 128,
         'condition': 'Like New',
+        'exchangeType': 'Exchange',
       },
       {
         'title': 'Calculus',
@@ -49,10 +124,12 @@ class _HomeScreenState extends State<HomeScreen> {
         'image': 'assets/images/calculus.jpg',
         'label': 'SELL',
         'labelColor': Colors.blue,
-        'description': 'Textbook on calculus with early transcendental approach.',
+        'description':
+            'Textbook on calculus with early transcendental approach.',
         'rating': 4.2,
         'reviews': 95,
         'condition': 'Good',
+        'exchangeType': 'Sell',
       },
       {
         'title': 'Operating System Concepts',
@@ -65,10 +142,11 @@ class _HomeScreenState extends State<HomeScreen> {
         'rating': 4.7,
         'reviews': 156,
         'condition': 'Like New',
+        'exchangeType': 'Exchange',
       },
     ];
 
-    final newlyAdded = [
+    final staticNewlyAdded = [
       {
         'title': 'Computer Networking',
         'author': 'Kurose & Ross',
@@ -80,6 +158,7 @@ class _HomeScreenState extends State<HomeScreen> {
         'rating': 4.3,
         'reviews': 87,
         'condition': 'Good',
+        'exchangeType': 'Sell',
       },
       {
         'title': 'Engineering Mechanics',
@@ -92,29 +171,44 @@ class _HomeScreenState extends State<HomeScreen> {
         'rating': 4.1,
         'reviews': 72,
         'condition': 'Like New',
+        'exchangeType': 'Exchange',
       },
     ];
+
+    // Combine static books with user-added books
+    final newlyAdded = [..._userAddedBooks, ...staticNewlyAdded];
 
     // Search filter
     final lowerQuery = _searchQuery.toLowerCase();
     final filteredPopularBooks = popularBooks.where((book) {
       final price = book['price'] as int;
       final condition = book['condition'] as String;
-      final matchesSearch = ((book['title'] as String?)?.toLowerCase() ?? '').contains(lowerQuery) ||
-          ((book['author'] as String?)?.toLowerCase() ?? '').contains(lowerQuery);
+      final exchangeType = book['exchangeType'] as String;
+      final matchesSearch = ((book['title'] as String?)?.toLowerCase() ?? '')
+              .contains(lowerQuery) ||
+          ((book['author'] as String?)?.toLowerCase() ?? '')
+              .contains(lowerQuery);
       return price >= _priceRange.start &&
           price <= _priceRange.end &&
           (_selectedCondition == 'All' || _selectedCondition == condition) &&
+          (_selectedExchangeType == 'All' ||
+              _selectedExchangeType == exchangeType) &&
           (lowerQuery.isEmpty || matchesSearch);
     }).toList();
+
     final filteredNewlyAdded = newlyAdded.where((book) {
       final price = book['price'] as int;
       final condition = book['condition'] as String;
-      final matchesSearch = ((book['title'] as String?)?.toLowerCase() ?? '').contains(lowerQuery) ||
-          ((book['author'] as String?)?.toLowerCase() ?? '').contains(lowerQuery);
+      final exchangeType = book['exchangeType'] as String? ?? 'Sell';
+      final matchesSearch = ((book['title'] as String?)?.toLowerCase() ?? '')
+              .contains(lowerQuery) ||
+          ((book['author'] as String?)?.toLowerCase() ?? '')
+              .contains(lowerQuery);
       return price >= _priceRange.start &&
           price <= _priceRange.end &&
           (_selectedCondition == 'All' || _selectedCondition == condition) &&
+          (_selectedExchangeType == 'All' ||
+              _selectedExchangeType == exchangeType) &&
           (lowerQuery.isEmpty || matchesSearch);
     }).toList();
 
@@ -186,7 +280,8 @@ class _HomeScreenState extends State<HomeScreen> {
                             mainAxisSize: MainAxisSize.min,
                             children: widget.notifications
                                 .map((n) => ListTile(
-                                      leading: const Icon(Icons.message, color: Color(0xFF2D66F4)),
+                                      leading: const Icon(Icons.message,
+                                          color: Color(0xFF2D66F4)),
                                       title: Text(n),
                                     ))
                                 .toList(),
@@ -205,143 +300,146 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(width: 8),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Search Bar
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              decoration: BoxDecoration(
-                color: Colors.grey[200],
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.search, color: Colors.grey),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: TextField(
-                      decoration: InputDecoration(
-                        hintText: widget.lang['searchHint'],
-                        border: InputBorder.none,
+      body: RefreshIndicator(
+        onRefresh: _loadUserBooks,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Search Bar
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(
+                  color: Colors.grey[200],
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.search, color: Colors.grey),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: TextField(
+                        decoration: InputDecoration(
+                          hintText: widget.lang['searchHint'],
+                          border: InputBorder.none,
+                        ),
+                        onChanged: (value) {
+                          setState(() {
+                            _searchQuery = value;
+                          });
+                        },
                       ),
-                      onChanged: (value) {
-                        setState(() {
-                          _searchQuery = value;
-                        });
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.filter_list, color: Colors.grey),
+                      onPressed: () {
+                        _showFilterDialog(context);
                       },
                     ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // Popular Books
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    widget.lang['popular']!,
+                    style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF2D66F4),
+                      letterSpacing: 0.5,
+                    ),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.filter_list, color: Colors.grey),
+                  TextButton(
                     onPressed: () {
-                      _showFilterDialog(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => AllBooksScreen(
+                            books: filteredPopularBooks,
+                            title: widget.lang['popular']!,
+                            lang: widget.lang,
+                          ),
+                        ),
+                      );
                     },
+                    child: Text(
+                      widget.lang['seeAll']!,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF2D66F4),
+                      ),
+                    ),
                   ),
                 ],
               ),
-            ),
-            const SizedBox(height: 24),
-
-            // Popular Books
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  widget.lang['popular']!,
-                  style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF2D66F4),
-                    letterSpacing: 0.5,
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 280,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: filteredPopularBooks.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 16),
+                  itemBuilder: (context, index) => SizedBox(
+                    width: 180,
+                    child: _buildBookCard(context, filteredPopularBooks[index]),
                   ),
-                ),
-                TextButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => AllBooksScreen(
-                          books: filteredPopularBooks,
-                          title: widget.lang['popular']!,
-                          lang: widget.lang,
-                        ),
-                      ),
-                    );
-                  },
-                  child: Text(
-                    widget.lang['seeAll']!,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF2D66F4),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            SizedBox(
-              height: 280,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: filteredPopularBooks.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 16),
-                itemBuilder: (context, index) => SizedBox(
-                  width: 180,
-                  child: _buildBookCard(context, filteredPopularBooks[index]),
                 ),
               ),
-            ),
-            const SizedBox(height: 24),
+              const SizedBox(height: 24),
 
-            // Newly Added
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  widget.lang['newlyAdded']!,
-                  style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF2D66F4),
-                    letterSpacing: 0.5,
-                  ),
-                ),
-                TextButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => AllBooksScreen(
-                          books: filteredNewlyAdded,
-                          title: widget.lang['newlyAdded']!,
-                          lang: widget.lang,
-                        ),
-                      ),
-                    );
-                  },
-                  child: Text(
-                    widget.lang['seeAll']!,
+              // Newly Added
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    widget.lang['newlyAdded']!,
                     style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
                       color: Color(0xFF2D66F4),
+                      letterSpacing: 0.5,
                     ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            ...filteredNewlyAdded.map(
-              (book) => Padding(
-                padding: const EdgeInsets.only(bottom: 16),
-                child: _buildBookCard(context, book, isVertical: true),
+                  TextButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => AllBooksScreen(
+                            books: filteredNewlyAdded,
+                            title: widget.lang['newlyAdded']!,
+                            lang: widget.lang,
+                          ),
+                        ),
+                      );
+                    },
+                    child: Text(
+                      widget.lang['seeAll']!,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF2D66F4),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ),
-          ],
+              const SizedBox(height: 12),
+              ...filteredNewlyAdded.map(
+                (book) => Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: _buildBookCard(context, book, isVertical: true),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -390,11 +488,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     topLeft: Radius.circular(16),
                     topRight: Radius.circular(16),
                   ),
-                  child: Image.asset(
+                  child: _buildBookImage(
                     book['image'],
                     height: isVertical ? 180 : 120,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
                   ),
                 ),
                 if (book['label'] != null && book['label'].isNotEmpty)
@@ -402,7 +498,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     top: 8,
                     right: 8,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
                         color: book['labelColor'],
                         borderRadius: BorderRadius.circular(8),
@@ -521,6 +618,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       setState(() {
                         _priceRange = const RangeValues(0, 1000);
                         _selectedCondition = 'All';
+                        _selectedExchangeType = 'All';
                       });
                     },
                     child: const Text(
@@ -560,6 +658,25 @@ class _HomeScreenState extends State<HomeScreen> {
                     _priceRange = values;
                   });
                 },
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Exchange Type',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87,
+                  letterSpacing: 0.2,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                children: [
+                  _buildExchangeTypeChip('All'),
+                  _buildExchangeTypeChip('Sell'),
+                  _buildExchangeTypeChip('Exchange'),
+                ],
               ),
               const SizedBox(height: 16),
               const Text(
@@ -609,6 +726,56 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildExchangeTypeChip(String exchangeType) {
+    final isSelected = _selectedExchangeType == exchangeType;
+    Color chipColor;
+    IconData chipIcon;
+
+    switch (exchangeType) {
+      case 'Sell':
+        chipColor = Colors.green;
+        chipIcon = Icons.sell;
+        break;
+      case 'Exchange':
+        chipColor = Colors.blue;
+        chipIcon = Icons.swap_horiz;
+        break;
+      default:
+        chipColor = Colors.grey;
+        chipIcon = Icons.all_inclusive;
+    }
+
+    return FilterChip(
+      label: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            chipIcon,
+            size: 16,
+            color: isSelected ? Colors.white : chipColor,
+          ),
+          const SizedBox(width: 4),
+          Text(exchangeType),
+        ],
+      ),
+      selected: isSelected,
+      onSelected: (bool selected) {
+        setState(() {
+          _selectedExchangeType = exchangeType;
+        });
+      },
+      backgroundColor: Colors.grey[200],
+      selectedColor: chipColor,
+      checkmarkColor: Colors.white,
+      labelStyle: TextStyle(
+        color: isSelected ? Colors.white : chipColor,
+        fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+        fontSize: 14,
+        letterSpacing: 0.2,
       ),
     );
   }
