@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:emurebook/services/service_provider.dart';
 import 'package:emurebook/models/user_model.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'favorites_screen.dart';
 import 'listings_screen.dart';
 import 'edit_profile_screen.dart';
+import 'dart:io';
 
 class ProfileScreen extends StatefulWidget {
   final Map<String, String> lang;
@@ -18,6 +21,8 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   final _authService = ServiceProvider().authService;
   User? _currentUser;
+  final ImagePicker _picker = ImagePicker();
+  String? _profileImagePath;
 
   @override
   void initState() {
@@ -25,10 +30,181 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _loadUserData();
   }
 
-  void _loadUserData() {
+  void _loadUserData() async {
     setState(() {
       _currentUser = _authService.currentUser;
     });
+    await _loadProfileImage();
+  }
+
+  Future<void> _loadProfileImage() async {
+    if (_currentUser != null) {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      final imagePath = prefs.getString('profile_image_${_currentUser!.id}');
+      if (imagePath != null && File(imagePath).existsSync()) {
+        setState(() {
+          _profileImagePath = imagePath;
+        });
+      }
+    }
+  }
+
+  Future<String?> _getUserProfileImage(String userId) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    final imagePath = prefs.getString('profile_image_$userId');
+    if (imagePath != null && File(imagePath).existsSync()) {
+      return imagePath;
+    }
+    return null;
+  }
+
+  Future<void> _pickProfileImage() async {
+    try {
+      final XFile? image = await _picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 512,
+        maxHeight: 512,
+        imageQuality: 85,
+      );
+
+      if (image != null && _currentUser != null) {
+        SharedPreferences prefs = await SharedPreferences.getInstance();
+        await prefs.setString('profile_image_${_currentUser!.id}', image.path);
+
+        setState(() {
+          _profileImagePath = image.path;
+        });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Profile picture updated successfully!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error updating profile picture: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _takeProfilePhoto() async {
+    try {
+      final XFile? image = await _picker.pickImage(
+        source: ImageSource.camera,
+        maxWidth: 512,
+        maxHeight: 512,
+        imageQuality: 85,
+      );
+
+      if (image != null && _currentUser != null) {
+        SharedPreferences prefs = await SharedPreferences.getInstance();
+        await prefs.setString('profile_image_${_currentUser!.id}', image.path);
+
+        setState(() {
+          _profileImagePath = image.path;
+        });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Profile picture updated successfully!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error updating profile picture: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _removeProfileImage() async {
+    if (_currentUser != null) {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      await prefs.remove('profile_image_${_currentUser!.id}');
+
+      setState(() {
+        _profileImagePath = null;
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Profile picture removed'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+    }
+  }
+
+  void _showProfileImageOptions() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (BuildContext context) {
+        return SafeArea(
+          child: Wrap(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text(
+                  'Change Profile Picture',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library, color: Colors.blue),
+                title: const Text('Choose from Gallery'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickProfileImage();
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_camera, color: Colors.green),
+                title: const Text('Take Photo'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _takeProfilePhoto();
+                },
+              ),
+              if (_profileImagePath != null)
+                ListTile(
+                  leading: const Icon(Icons.delete, color: Colors.red),
+                  title: const Text('Remove Picture'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _removeProfileImage();
+                  },
+                ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   void _logout() async {
@@ -36,6 +212,87 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (mounted) {
       Navigator.pushReplacementNamed(context, '/login');
     }
+  }
+
+  void _showUserSwitcher(BuildContext context) {
+    final users = _authService.registeredUsers;
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Switch User (Testing)',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 16),
+            ...users
+                .map((user) => FutureBuilder<String?>(
+                      future: _getUserProfileImage(user['id']),
+                      builder: (context, snapshot) {
+                        return ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor: user['id'] == _currentUser?.id
+                                ? Colors.blue
+                                : Colors.grey,
+                            backgroundImage:
+                                snapshot.hasData && snapshot.data != null
+                                    ? FileImage(File(snapshot.data!))
+                                    : null,
+                            child: snapshot.hasData && snapshot.data != null
+                                ? null
+                                : Text(
+                                    user['name'][0].toUpperCase(),
+                                    style: const TextStyle(color: Colors.white),
+                                  ),
+                          ),
+                          title: Text(user['name']),
+                          subtitle: Text(user['email']),
+                          trailing: user['id'] == _currentUser?.id
+                              ? const Icon(Icons.check, color: Colors.blue)
+                              : null,
+                          onTap: () async {
+                            if (user['id'] != _currentUser?.id) {
+                              try {
+                                await _authService.switchUser(user['id']);
+                                _loadUserData();
+                                Navigator.pop(context);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content:
+                                        Text('Switched to ${user['name']}'),
+                                    backgroundColor: Colors.green,
+                                  ),
+                                );
+                              } catch (e) {
+                                Navigator.pop(context);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Failed to switch user: $e'),
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                              }
+                            }
+                          },
+                        );
+                      },
+                    ))
+                .toList(),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -93,14 +350,45 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 child: Row(
                   children: [
-                    CircleAvatar(
-                      radius: 36,
-                      backgroundColor:
-                          isAdmin ? Colors.blue[700] : Colors.grey[400],
-                      child: Icon(
-                        isAdmin ? Icons.admin_panel_settings : Icons.person,
-                        size: 36,
-                        color: Colors.white,
+                    GestureDetector(
+                      onTap: _showProfileImageOptions,
+                      child: Stack(
+                        children: [
+                          CircleAvatar(
+                            radius: 36,
+                            backgroundColor:
+                                isAdmin ? Colors.blue[700] : Colors.grey[400],
+                            backgroundImage: _profileImagePath != null
+                                ? FileImage(File(_profileImagePath!))
+                                : null,
+                            child: _profileImagePath == null
+                                ? Icon(
+                                    isAdmin
+                                        ? Icons.admin_panel_settings
+                                        : Icons.person,
+                                    size: 36,
+                                    color: Colors.white,
+                                  )
+                                : null,
+                          ),
+                          Positioned(
+                            bottom: 0,
+                            right: 0,
+                            child: Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                shape: BoxShape.circle,
+                                border: Border.all(color: Colors.grey.shade300),
+                              ),
+                              child: Icon(
+                                Icons.camera_alt,
+                                size: 16,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                     const SizedBox(width: 16),
@@ -176,7 +464,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     builder: (_) => ListingsScreen(
                       lang: widget.lang,
                       onMessageSent: (_) {},
-                      showOnlyMine: true,
                     ),
                   ),
                 );
@@ -209,7 +496,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       builder: (_) => ListingsScreen(
                         lang: widget.lang,
                         onMessageSent: (_) {},
-                        showOnlyMine: false,
                       ),
                     ),
                   );
@@ -276,6 +562,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         builder: (_) => _PlaceholderScreen(
                             title: widget.lang['contact_support'] ??
                                 'Contact Support')));
+              }),
+              const SizedBox(height: 16),
+              // User Switcher (for testing)
+              Text(
+                'Switch User (Testing)',
+                style:
+                    const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+              ),
+              const SizedBox(height: 8),
+              _profileTile(context, Icons.switch_account, 'Switch User', () {
+                _showUserSwitcher(context);
               }),
               const SizedBox(height: 24),
               // Log Out

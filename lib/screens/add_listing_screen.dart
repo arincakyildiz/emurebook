@@ -18,7 +18,7 @@ class _AddListingScreenState extends State<AddListingScreen> {
   bool isLoading = false;
   File? _selectedImage;
   final ImagePicker _picker = ImagePicker();
-  String _selectedExchangeType = 'Sell'; // Default to Sell
+  Set<String> _selectedExchangeTypes = {'Sell'}; // Default to Sell
   String _selectedCondition = 'Good'; // Default to Good
 
   final _bookService = BookService();
@@ -131,6 +131,16 @@ class _AddListingScreenState extends State<AddListingScreen> {
       return;
     }
 
+    if (_selectedExchangeTypes.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('Please select at least one exchange type')),
+        );
+      }
+      return;
+    }
+
     setState(() {
       isLoading = true;
     });
@@ -144,7 +154,7 @@ class _AddListingScreenState extends State<AddListingScreen> {
             ? null
             : descriptionController.text,
         imageFile: _selectedImage,
-        exchangeType: _selectedExchangeType,
+        exchangeType: _selectedExchangeTypes.join(', '), // Join multiple types
         condition: _selectedCondition,
       );
 
@@ -434,8 +444,18 @@ class _AddListingScreenState extends State<AddListingScreen> {
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  RadioListTile<String>(
+                  const Text(
+                    'Select one or both options:',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  CheckboxListTile(
                     title: Row(
                       children: [
                         Icon(Icons.sell, color: Colors.green[600], size: 20),
@@ -461,17 +481,21 @@ class _AddListingScreenState extends State<AddListingScreen> {
                       ],
                     ),
                     subtitle: const Text('Sell your book for money'),
-                    value: 'Sell',
-                    groupValue: _selectedExchangeType,
-                    onChanged: (value) {
+                    value: _selectedExchangeTypes.contains('Sell'),
+                    onChanged: (bool? value) {
                       setState(() {
-                        _selectedExchangeType = value!;
+                        if (value == true) {
+                          _selectedExchangeTypes.add('Sell');
+                        } else {
+                          _selectedExchangeTypes.remove('Sell');
+                        }
                       });
                     },
                     contentPadding: EdgeInsets.zero,
+                    controlAffinity: ListTileControlAffinity.leading,
                   ),
                   const Divider(),
-                  RadioListTile<String>(
+                  CheckboxListTile(
                     title: Row(
                       children: [
                         Icon(Icons.swap_horiz,
@@ -498,15 +522,30 @@ class _AddListingScreenState extends State<AddListingScreen> {
                       ],
                     ),
                     subtitle: const Text('Exchange with another book'),
-                    value: 'Exchange',
-                    groupValue: _selectedExchangeType,
-                    onChanged: (value) {
+                    value: _selectedExchangeTypes.contains('Exchange'),
+                    onChanged: (bool? value) {
                       setState(() {
-                        _selectedExchangeType = value!;
+                        if (value == true) {
+                          _selectedExchangeTypes.add('Exchange');
+                        } else {
+                          _selectedExchangeTypes.remove('Exchange');
+                        }
                       });
                     },
                     contentPadding: EdgeInsets.zero,
+                    controlAffinity: ListTileControlAffinity.leading,
                   ),
+                  if (_selectedExchangeTypes.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text(
+                        'Please select at least one exchange type',
+                        style: TextStyle(
+                          color: Colors.red[600],
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),

@@ -77,27 +77,48 @@ class BookService {
     return List.from(_books);
   }
 
+  // Get books for current user only (for listings screen)
+  Future<List<Book>> getUserBooks() async {
+    final currentUser = _authService.currentUser;
+    if (currentUser == null) {
+      return [];
+    }
+
+    return _books.where((book) => book.owner['_id'] == currentUser.id).toList();
+  }
+
   // Get books formatted for home screen display
   Future<List<Map<String, dynamic>>> getBooksForHomeScreen() async {
-    return _books
-        .map((book) => {
-              'title': book.title,
-              'author': book.author,
-              'price': book.price.toInt(),
-              'image': book.imageUrl ?? 'assets/images/emu_logo.png',
-              'label': book.exchangeType.toUpperCase(),
-              'labelColor':
-                  book.exchangeType == 'Sell' ? Colors.green : Colors.blue,
-              'description': book.description ?? 'No description available.',
-              'rating': book.averageRating,
-              'reviews': book.ratings?.length ?? 0,
-              'condition': book.condition,
-              'owner': book.owner,
-              'availability': book.availability,
-              'createdAt': book.createdAt,
-              'exchangeType': book.exchangeType,
-            })
-        .toList();
+    return _books.map((book) {
+      // Handle multiple exchange types
+      final types = book.exchangeType
+          .split(', ')
+          .where((type) => type.isNotEmpty)
+          .toList();
+      String displayLabel = types.join(' & ').toUpperCase();
+      Color labelColor = types.contains('Sell') && types.contains('Exchange')
+          ? Colors.purple // Mixed color for both
+          : types.contains('Sell')
+              ? Colors.green
+              : Colors.blue;
+
+      return {
+        'title': book.title,
+        'author': book.author,
+        'price': book.price.toInt(),
+        'image': book.imageUrl ?? 'assets/images/emu_logo.png',
+        'label': displayLabel,
+        'labelColor': labelColor,
+        'description': book.description ?? 'No description available.',
+        'rating': book.averageRating,
+        'reviews': book.ratings?.length ?? 0,
+        'condition': book.condition,
+        'owner': book.owner,
+        'availability': book.availability,
+        'createdAt': book.createdAt,
+        'exchangeType': book.exchangeType,
+      };
+    }).toList();
   }
 
   // Get recently added books (last 10)

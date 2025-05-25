@@ -8,14 +8,12 @@ import 'dart:io';
 class ListingsScreen extends StatefulWidget {
   final Map<String, String> lang;
   final void Function(String) onMessageSent;
-  final bool showOnlyMine;
   final VoidCallback? onBookAdded;
 
   const ListingsScreen({
     super.key,
     required this.lang,
     required this.onMessageSent,
-    this.showOnlyMine = false,
     this.onBookAdded,
   });
 
@@ -42,7 +40,8 @@ class _ListingsScreenState extends State<ListingsScreen> {
     });
 
     try {
-      final books = await _bookService.getAllBooks();
+      // Load only current user's books for listings screen
+      final books = await _bookService.getUserBooks();
       setState(() {
         _books = books;
         _isLoading = false;
@@ -60,7 +59,7 @@ class _ListingsScreenState extends State<ListingsScreen> {
     // Filter by exchange type
     if (_selectedExchangeType != 'All') {
       filtered = filtered
-          .where((book) => book.exchangeType == _selectedExchangeType)
+          .where((book) => book.exchangeType.contains(_selectedExchangeType))
           .toList();
     }
 
@@ -81,63 +80,71 @@ class _ListingsScreenState extends State<ListingsScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Exchange Type Filter
-          Row(
-            children: [
-              const Text(
-                'Type: ',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.grey,
+          SizedBox(
+            height: 40,
+            child: Row(
+              children: [
+                const SizedBox(
+                  width: 60,
+                  child: Text(
+                    'Type:',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.grey,
+                    ),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
+                Expanded(
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
                     children: [
                       _buildExchangeTypeChip('All', Icons.all_inclusive),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 6),
                       _buildExchangeTypeChip('Sell', Icons.sell),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 6),
                       _buildExchangeTypeChip('Exchange', Icons.swap_horiz),
+                      const SizedBox(width: 16), // Extra padding at end
                     ],
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
           const SizedBox(height: 8),
           // Condition Filter
-          Row(
-            children: [
-              const Text(
-                'Condition: ',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.grey,
+          SizedBox(
+            height: 40,
+            child: Row(
+              children: [
+                const SizedBox(
+                  width: 60,
+                  child: Text(
+                    'Condition:',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.grey,
+                    ),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
+                Expanded(
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
                     children: [
                       _buildConditionChip('All', Icons.all_inclusive),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 6),
                       _buildConditionChip('Like New', Icons.star),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 6),
                       _buildConditionChip('Good', Icons.thumb_up),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 6),
                       _buildConditionChip('Fair', Icons.info),
+                      const SizedBox(width: 16), // Extra padding at end
                     ],
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),
@@ -160,20 +167,23 @@ class _ListingsScreenState extends State<ListingsScreen> {
     }
 
     return FilterChip(
+      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      visualDensity: VisualDensity.compact,
       label: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
             icon,
-            size: 16,
+            size: 14,
             color: isSelected ? Colors.white : chipColor,
           ),
-          const SizedBox(width: 4),
+          const SizedBox(width: 3),
           Text(
             type,
             style: TextStyle(
               color: isSelected ? Colors.white : chipColor,
               fontWeight: FontWeight.w500,
+              fontSize: 11,
             ),
           ),
         ],
@@ -188,6 +198,7 @@ class _ListingsScreenState extends State<ListingsScreen> {
       selectedColor: chipColor,
       checkmarkColor: Colors.white,
       elevation: isSelected ? 2 : 0,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
     );
   }
 
@@ -210,21 +221,23 @@ class _ListingsScreenState extends State<ListingsScreen> {
     }
 
     return FilterChip(
+      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      visualDensity: VisualDensity.compact,
       label: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
             icon,
-            size: 16,
+            size: 14,
             color: isSelected ? Colors.white : chipColor,
           ),
-          const SizedBox(width: 4),
+          const SizedBox(width: 3),
           Text(
             condition,
             style: TextStyle(
               color: isSelected ? Colors.white : chipColor,
               fontWeight: FontWeight.w500,
-              fontSize: 12,
+              fontSize: 11,
             ),
           ),
         ],
@@ -239,6 +252,7 @@ class _ListingsScreenState extends State<ListingsScreen> {
       selectedColor: chipColor,
       checkmarkColor: Colors.white,
       elevation: isSelected ? 2 : 0,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
     );
   }
 
@@ -322,7 +336,7 @@ class _ListingsScreenState extends State<ListingsScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.showOnlyMine ? 'My Books' : 'All Books'),
+        title: Text(widget.lang['manage_listings'] ?? 'My Books'),
         backgroundColor: Colors.white,
         elevation: 0,
       ),
@@ -350,8 +364,8 @@ class _ListingsScreenState extends State<ListingsScreen> {
                             Text(
                               _selectedExchangeType == 'All' &&
                                       _selectedCondition == 'All'
-                                  ? 'No books found. Add a new one!'
-                                  : 'No books match your filters.',
+                                  ? 'You haven\'t added any books yet. Add your first book!'
+                                  : 'None of your books match the selected filters.',
                               style: const TextStyle(fontSize: 16),
                               textAlign: TextAlign.center,
                             ),
@@ -474,27 +488,8 @@ class _ListingsScreenState extends State<ListingsScreen> {
                                           ),
                                         ),
                                         const SizedBox(height: 4),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 8,
-                                            vertical: 4,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: book.exchangeType == 'Sell'
-                                                ? Colors.green
-                                                : Colors.blue,
-                                            borderRadius:
-                                                BorderRadius.circular(12),
-                                          ),
-                                          child: Text(
-                                            book.exchangeType.toUpperCase(),
-                                            style: const TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 10,
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                          ),
-                                        ),
+                                        _buildExchangeTypeBadges(
+                                            book.exchangeType),
                                       ],
                                     ),
                                   ],
@@ -521,6 +516,52 @@ class _ListingsScreenState extends State<ListingsScreen> {
         backgroundColor: const Color(0xFF2D66F4),
         child: const Icon(Icons.add),
       ),
+    );
+  }
+
+  Widget _buildExchangeTypeBadges(String exchangeTypes) {
+    final types =
+        exchangeTypes.split(', ').where((type) => type.isNotEmpty).toList();
+
+    if (types.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Wrap(
+      spacing: 4,
+      runSpacing: 2,
+      children: types.map((type) {
+        Color badgeColor;
+        switch (type.trim()) {
+          case 'Sell':
+            badgeColor = Colors.green;
+            break;
+          case 'Exchange':
+            badgeColor = Colors.blue;
+            break;
+          default:
+            badgeColor = Colors.grey;
+        }
+
+        return Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: 6,
+            vertical: 2,
+          ),
+          decoration: BoxDecoration(
+            color: badgeColor,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(
+            type.trim().toUpperCase(),
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 9,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        );
+      }).toList(),
     );
   }
 

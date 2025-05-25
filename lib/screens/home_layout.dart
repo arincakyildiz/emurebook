@@ -4,6 +4,8 @@ import 'listings_screen.dart';
 import 'messages_screen.dart';
 import 'profile_screen.dart';
 import 'favorites_screen.dart';
+import '../services/service_provider.dart';
+import 'dart:async';
 
 class HomeLayout extends StatefulWidget {
   const HomeLayout({super.key});
@@ -17,6 +19,8 @@ class _HomeLayoutState extends State<HomeLayout> {
   String _selectedLanguage = 'English';
   List<String> _notifications = [];
   VoidCallback? _refreshHomeScreen;
+  final _authService = ServiceProvider().authService;
+  StreamSubscription<bool>? _authSubscription;
 
   void _updateLanguage(String newLanguage) {
     setState(() {
@@ -177,6 +181,27 @@ class _HomeLayoutState extends State<HomeLayout> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    // Listen to auth state changes to refresh screens when user switches
+    _authSubscription = _authService.authStateStream.listen((isAuthenticated) {
+      if (mounted) {
+        setState(() {
+          // Force rebuild of all screens when user changes
+        });
+        // Refresh home screen when user switches
+        _refreshHomeScreen?.call();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _authSubscription?.cancel();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final lang = localized[_selectedLanguage]!;
     final List<Widget> _pages = [
@@ -191,7 +216,6 @@ class _HomeLayoutState extends State<HomeLayout> {
       ListingsScreen(
         lang: lang,
         onMessageSent: addNotification,
-        showOnlyMine: true,
         onBookAdded: _onBookAdded,
       ),
       FavoritesScreen(lang: lang),

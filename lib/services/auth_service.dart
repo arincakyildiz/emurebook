@@ -40,6 +40,31 @@ class AuthService {
   // Check if user is authenticated
   bool get isAuthenticated => _currentUser != null;
 
+  // Get all registered users (for testing purposes)
+  List<Map<String, dynamic>> get registeredUsers => List.from(_registeredUsers);
+
+  // Switch to a different user (for testing purposes)
+  Future<void> switchUser(String userId) async {
+    try {
+      final userData = _registeredUsers.firstWhere(
+        (user) => user['id'] == userId,
+        orElse: () => throw Exception('User not found'),
+      );
+
+      _currentUser = _createUserFromData(userData);
+
+      // Save token for persistence
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      final token = 'switch-token-${DateTime.now().millisecondsSinceEpoch}';
+      await prefs.setString('auth_token', token);
+      await prefs.setString('user_id', userId);
+
+      _authStateController.add(true);
+    } catch (e) {
+      rethrow;
+    }
+  }
+
   // Initialize auth state
   Future<void> init() async {
     try {
@@ -69,35 +94,66 @@ class AuthService {
   // Create and log in a default test user for development
   Future<void> _createDefaultTestUser() async {
     try {
-      final testUserData = {
-        'id': 'test_user_123',
-        'name': 'John Doe',
-        'email': 'john.doe@emu.edu.tr',
-        'password': 'test123',
-        'department': 'Computer Engineering',
-        'studentId': 'EMU2024001',
-        'phone': '555-123-4567',
-        'role': 'user',
-        'favoriteBooks': [],
-        'createdAt': DateTime.now().toIso8601String(),
-      };
+      // Create multiple test users for demonstration
+      final testUsers = [
+        {
+          'id': 'test_user_123',
+          'name': 'John Doe',
+          'email': 'john.doe@emu.edu.tr',
+          'password': 'test123',
+          'department': 'Computer Engineering',
+          'studentId': 'EMU2024001',
+          'phone': '555-123-4567',
+          'role': 'user',
+          'favoriteBooks': [],
+          'createdAt': DateTime.now().toIso8601String(),
+        },
+        {
+          'id': 'test_user_456',
+          'name': 'Jane Smith',
+          'email': 'jane.smith@emu.edu.tr',
+          'password': 'test123',
+          'department': 'Business Administration',
+          'studentId': 'EMU2024002',
+          'phone': '555-987-6543',
+          'role': 'user',
+          'favoriteBooks': [],
+          'createdAt': DateTime.now().toIso8601String(),
+        },
+        {
+          'id': 'test_user_789',
+          'name': 'Ali Yılmaz',
+          'email': 'ali.yilmaz@emu.edu.tr',
+          'password': 'test123',
+          'department': 'Electrical Engineering',
+          'studentId': 'EMU2024003',
+          'phone': '555-456-7890',
+          'role': 'user',
+          'favoriteBooks': [],
+          'createdAt': DateTime.now().toIso8601String(),
+        },
+      ];
 
-      // Add to registered users if not already exists
-      final existingUser = _registeredUsers
-          .where((user) => user['id'] == testUserData['id'])
-          .toList();
+      // Add test users if they don't exist
+      for (final testUserData in testUsers) {
+        final existingUser = _registeredUsers
+            .where((user) => user['id'] == testUserData['id'])
+            .toList();
 
-      if (existingUser.isEmpty) {
-        _registeredUsers.add(testUserData);
+        if (existingUser.isEmpty) {
+          _registeredUsers.add(testUserData);
+        }
       }
 
-      _currentUser = _createUserFromData(testUserData);
+      // Log in the first test user by default
+      final defaultUser = testUsers[0];
+      _currentUser = _createUserFromData(defaultUser);
 
       // Save token for persistence
       SharedPreferences prefs = await SharedPreferences.getInstance();
       final token = 'test-token-${DateTime.now().millisecondsSinceEpoch}';
       await prefs.setString('auth_token', token);
-      await prefs.setString('user_id', testUserData['id'] as String);
+      await prefs.setString('user_id', defaultUser['id'] as String);
 
       _authStateController.add(true);
     } catch (e) {

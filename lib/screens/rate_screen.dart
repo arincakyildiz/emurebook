@@ -22,21 +22,21 @@ class _RateScreenState extends State<RateScreen> {
 
     showDialog(
       context: context,
-      builder:
-          (context) => AlertDialog(
-            title: Text(widget.lang['thank_you_title'] ?? "Thank You!"),
-            content: Text(widget.lang['thank_you_message'] ?? "Your feedback has been submitted."),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  Navigator.pop(context);
-                  Navigator.pop(context);
-                },
-                child: Text(widget.lang['close'] ?? "Close"),
-              ),
-            ],
+      builder: (context) => AlertDialog(
+        title: Text(widget.lang['thank_you_title'] ?? "Thank You!"),
+        content: Text(widget.lang['thank_you_message'] ??
+            "Your feedback has been submitted."),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.pop(context);
+              Navigator.pop(context);
+            },
+            child: Text(widget.lang['close'] ?? "Close"),
           ),
+        ],
+      ),
     );
   }
 
@@ -67,7 +67,8 @@ class _RateScreenState extends State<RateScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              widget.lang['how_was_your_experience'] ?? "How was your experience?",
+              widget.lang['how_was_your_experience'] ??
+                  "How was your experience?",
               style: const TextStyle(fontSize: 18),
             ),
             const SizedBox(height: 16),
@@ -86,7 +87,8 @@ class _RateScreenState extends State<RateScreen> {
               maxLines: 4,
               decoration: InputDecoration(
                 border: OutlineInputBorder(),
-                hintText: widget.lang['write_your_feedback_here'] ?? "Write your feedback here...",
+                hintText: widget.lang['write_your_feedback_here'] ??
+                    "Write your feedback here...",
               ),
             ),
             const Spacer(),

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'book_detail_screen.dart';
 import 'all_books_screen.dart';
-import '../services/book_service.dart';
+import '../services/service_provider.dart';
 import 'dart:io';
 
 class HomeScreen extends StatefulWidget {
@@ -29,7 +29,7 @@ class _HomeScreenState extends State<HomeScreen> {
   String _selectedCondition = 'All';
   String _selectedExchangeType = 'All'; // All, Sell, Exchange
   String _searchQuery = '';
-  final BookService _bookService = BookService();
+  final _bookService = ServiceProvider().bookService;
   List<Map<String, dynamic>> _userAddedBooks = [];
 
   @override
@@ -192,7 +192,7 @@ class _HomeScreenState extends State<HomeScreen> {
           price <= _priceRange.end &&
           (_selectedCondition == 'All' || _selectedCondition == condition) &&
           (_selectedExchangeType == 'All' ||
-              _selectedExchangeType == exchangeType) &&
+              exchangeType.contains(_selectedExchangeType)) &&
           (lowerQuery.isEmpty || matchesSearch);
     }).toList();
 
@@ -208,7 +208,7 @@ class _HomeScreenState extends State<HomeScreen> {
           price <= _priceRange.end &&
           (_selectedCondition == 'All' || _selectedCondition == condition) &&
           (_selectedExchangeType == 'All' ||
-              _selectedExchangeType == exchangeType) &&
+              exchangeType.contains(_selectedExchangeType)) &&
           (lowerQuery.isEmpty || matchesSearch);
     }).toList();
 
