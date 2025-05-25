@@ -28,6 +28,7 @@ class _ListingsScreenState extends State<ListingsScreen> {
   List<Book> _books = [];
   bool _isLoading = true;
   String _selectedExchangeType = 'All'; // All, Sell, Exchange
+  String _selectedCondition = 'All'; // All, Like New, Good, Fair
 
   @override
   void initState() {
@@ -54,48 +55,96 @@ class _ListingsScreenState extends State<ListingsScreen> {
   }
 
   List<Book> get _filteredBooks {
-    if (_selectedExchangeType == 'All') {
-      return _books;
+    List<Book> filtered = _books;
+
+    // Filter by exchange type
+    if (_selectedExchangeType != 'All') {
+      filtered = filtered
+          .where((book) => book.exchangeType == _selectedExchangeType)
+          .toList();
     }
-    return _books
-        .where((book) => book.exchangeType == _selectedExchangeType)
-        .toList();
+
+    // Filter by condition
+    if (_selectedCondition != 'All') {
+      filtered = filtered
+          .where((book) => book.condition == _selectedCondition)
+          .toList();
+    }
+
+    return filtered;
   }
 
-  Widget _buildExchangeTypeFilter() {
+  Widget _buildFilters() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Filter by: ',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-              color: Colors.grey,
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  _buildFilterChip('All', Icons.all_inclusive),
-                  const SizedBox(width: 8),
-                  _buildFilterChip('Sell', Icons.sell),
-                  const SizedBox(width: 8),
-                  _buildFilterChip('Exchange', Icons.swap_horiz),
-                ],
+          // Exchange Type Filter
+          Row(
+            children: [
+              const Text(
+                'Type: ',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.grey,
+                ),
               ),
-            ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      _buildExchangeTypeChip('All', Icons.all_inclusive),
+                      const SizedBox(width: 8),
+                      _buildExchangeTypeChip('Sell', Icons.sell),
+                      const SizedBox(width: 8),
+                      _buildExchangeTypeChip('Exchange', Icons.swap_horiz),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          // Condition Filter
+          Row(
+            children: [
+              const Text(
+                'Condition: ',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.grey,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      _buildConditionChip('All', Icons.all_inclusive),
+                      const SizedBox(width: 8),
+                      _buildConditionChip('Like New', Icons.star),
+                      const SizedBox(width: 8),
+                      _buildConditionChip('Good', Icons.thumb_up),
+                      const SizedBox(width: 8),
+                      _buildConditionChip('Fair', Icons.info),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
     );
   }
 
-  Widget _buildFilterChip(String type, IconData icon) {
+  Widget _buildExchangeTypeChip(String type, IconData icon) {
     final isSelected = _selectedExchangeType == type;
     Color chipColor;
 
@@ -133,6 +182,57 @@ class _ListingsScreenState extends State<ListingsScreen> {
       onSelected: (bool selected) {
         setState(() {
           _selectedExchangeType = type;
+        });
+      },
+      backgroundColor: Colors.grey[100],
+      selectedColor: chipColor,
+      checkmarkColor: Colors.white,
+      elevation: isSelected ? 2 : 0,
+    );
+  }
+
+  Widget _buildConditionChip(String condition, IconData icon) {
+    final isSelected = _selectedCondition == condition;
+    Color chipColor;
+
+    switch (condition) {
+      case 'Like New':
+        chipColor = Colors.green;
+        break;
+      case 'Good':
+        chipColor = Colors.blue;
+        break;
+      case 'Fair':
+        chipColor = Colors.orange;
+        break;
+      default:
+        chipColor = Colors.grey;
+    }
+
+    return FilterChip(
+      label: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            size: 16,
+            color: isSelected ? Colors.white : chipColor,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            condition,
+            style: TextStyle(
+              color: isSelected ? Colors.white : chipColor,
+              fontWeight: FontWeight.w500,
+              fontSize: 12,
+            ),
+          ),
+        ],
+      ),
+      selected: isSelected,
+      onSelected: (bool selected) {
+        setState(() {
+          _selectedCondition = condition;
         });
       },
       backgroundColor: Colors.grey[100],
@@ -228,7 +328,7 @@ class _ListingsScreenState extends State<ListingsScreen> {
       ),
       body: Column(
         children: [
-          _buildExchangeTypeFilter(),
+          _buildFilters(),
           const Divider(height: 1),
           Expanded(
             child: _isLoading
@@ -239,31 +339,33 @@ class _ListingsScreenState extends State<ListingsScreen> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(
-                              _selectedExchangeType == 'All'
+                              _selectedExchangeType == 'All' &&
+                                      _selectedCondition == 'All'
                                   ? Icons.book_outlined
-                                  : _selectedExchangeType == 'Sell'
-                                      ? Icons.sell_outlined
-                                      : Icons.swap_horiz_outlined,
+                                  : Icons.filter_list_off,
                               size: 64,
                               color: Colors.grey[400],
                             ),
                             const SizedBox(height: 16),
                             Text(
-                              _selectedExchangeType == 'All'
+                              _selectedExchangeType == 'All' &&
+                                      _selectedCondition == 'All'
                                   ? 'No books found. Add a new one!'
-                                  : 'No ${_selectedExchangeType.toLowerCase()} books found.',
+                                  : 'No books match your filters.',
                               style: const TextStyle(fontSize: 16),
                               textAlign: TextAlign.center,
                             ),
-                            if (_selectedExchangeType != 'All') ...[
+                            if (_selectedExchangeType != 'All' ||
+                                _selectedCondition != 'All') ...[
                               const SizedBox(height: 8),
                               TextButton(
                                 onPressed: () {
                                   setState(() {
                                     _selectedExchangeType = 'All';
+                                    _selectedCondition = 'All';
                                   });
                                 },
-                                child: const Text('Show all books'),
+                                child: const Text('Clear filters'),
                               ),
                             ],
                           ],
@@ -322,13 +424,39 @@ class _ListingsScreenState extends State<ListingsScreen> {
                                             ),
                                           ],
                                           const SizedBox(height: 4),
-                                          Text(
-                                            'Seller: ${book.owner['name']}',
-                                            style: TextStyle(
-                                              color: Colors.blue[600],
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w500,
-                                            ),
+                                          Row(
+                                            children: [
+                                              Text(
+                                                'Seller: ${book.owner['name']}',
+                                                style: TextStyle(
+                                                  color: Colors.blue[600],
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Container(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                  horizontal: 6,
+                                                  vertical: 2,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color: _getConditionColor(
+                                                      book.condition),
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
+                                                ),
+                                                child: Text(
+                                                  book.condition.toUpperCase(),
+                                                  style: const TextStyle(
+                                                    color: Colors.white,
+                                                    fontSize: 9,
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
                                           ),
                                         ],
                                       ),
@@ -394,5 +522,18 @@ class _ListingsScreenState extends State<ListingsScreen> {
         child: const Icon(Icons.add),
       ),
     );
+  }
+
+  Color _getConditionColor(String condition) {
+    switch (condition) {
+      case 'Like New':
+        return Colors.green;
+      case 'Good':
+        return Colors.blue;
+      case 'Fair':
+        return Colors.orange;
+      default:
+        return Colors.grey;
+    }
   }
 }

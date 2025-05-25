@@ -1,10 +1,12 @@
 import '../models/message_model.dart';
 import '../models/conversation_model.dart';
 import 'api_service.dart';
+import 'service_provider.dart';
 import 'auth_service.dart';
 
 class MessageService {
-  final AuthService _authService = AuthService();
+  // Get AuthService from ServiceProvider
+  AuthService get _authService => ServiceProvider().authService;
 
   // Mock conversations and messages
   static final Map<String, List<Map<String, dynamic>>> _mockConversations = {
@@ -72,32 +74,42 @@ class MessageService {
 
       // Filter user conversations
       List<Map<String, dynamic>> userConversations = [];
+      Map<String, Map<String, dynamic>> conversationMap = {};
 
-      _mockConversations.forEach((userId, messages) {
+      _mockConversations.forEach((conversationKey, messages) {
         for (var message in messages) {
           if (message['sender']['_id'] == currentUser.id ||
               message['receiver']['_id'] == currentUser.id) {
-            // Determine the other party in conversation (if sender is user then show receiver, if receiver is user then show sender)
+            // Determine the other party in conversation
             Map<String, dynamic> otherUser =
                 message['sender']['_id'] == currentUser.id
                     ? message['receiver']
                     : message['sender'];
 
-            // Check if conversation already exists
-            bool conversationExists = userConversations
-                .any((conv) => conv['otherUser']['_id'] == otherUser['_id']);
+            String otherUserId = otherUser['_id'];
 
-            if (!conversationExists) {
-              userConversations.add({
+            // Update conversation with latest message
+            if (!conversationMap.containsKey(otherUserId) ||
+                (message['timestamp'] as DateTime).isAfter(
+                    conversationMap[otherUserId]!['timestamp'] as DateTime)) {
+              conversationMap[otherUserId] = {
                 'otherUser': otherUser,
                 'lastMessage': message['message'],
                 'timestamp': message['timestamp'],
-                'unreadCount': 1, // Calculate actual unread count in production
-              });
+                'unreadCount': message['receiver']['_id'] == currentUser.id &&
+                        !message['read']
+                    ? 1
+                    : 0,
+              };
             }
           }
         }
       });
+
+      // Convert map to list and sort by timestamp
+      userConversations = conversationMap.values.toList();
+      userConversations.sort((a, b) =>
+          (b['timestamp'] as DateTime).compareTo(a['timestamp'] as DateTime));
 
       return userConversations;
     } catch (e) {
@@ -118,32 +130,35 @@ class MessageService {
         if (otherUserId == '100') {
           return List.from(_adminMessages);
         }
-
-        // For other users, return empty list
         return [];
       }
 
-      // Find user info
-      Map<String, dynamic> otherUser = {
-        '_id': otherUserId,
-        'name': 'Other User',
-        'email': 'other@example.com'
-      };
-
-      // If new conversation is started with a user
-      if (otherUserId == 'new_user') {
-        // Create a new user (in production this will come from API)
-        otherUser = {
-          '_id': 'new_user_id',
-          'name': 'New User',
-          'email': 'newuser@example.com'
-        };
-      }
-
-      // Find all messages between two users
+      // Find all messages between current user and other user
       List<Message> conversationMessages = [];
 
-      // Check messages of each user
+      // Check all conversations for messages between these two users
+      _mockConversations.forEach((conversationKey, messages) {
+        for (var messageData in messages) {
+          if ((messageData['sender']['_id'] == currentUser.id &&
+                  messageData['receiver']['_id'] == otherUserId) ||
+              (messageData['sender']['_id'] == otherUserId &&
+                  messageData['receiver']['_id'] == currentUser.id)) {
+            // Convert message data to Message object
+            final message = Message(
+              id: messageData['id'],
+              sender: messageData['sender'],
+              receiver: messageData['receiver'],
+              content: messageData['message'],
+              createdAt: messageData['timestamp'],
+              isRead: messageData['read'],
+            );
+
+            conversationMessages.add(message);
+          }
+        }
+      });
+
+      // Also check individual message lists for backward compatibility
       [currentUser.id, otherUserId].forEach((userId) {
         if (_mockMessages.containsKey(userId)) {
           for (var message in _mockMessages[userId]!) {
@@ -151,7 +166,12 @@ class MessageService {
                     message.receiver['_id'] == otherUserId) ||
                 (message.sender['_id'] == otherUserId &&
                     message.receiver['_id'] == currentUser.id)) {
-              conversationMessages.add(message);
+              // Check if message is not already added
+              bool alreadyExists =
+                  conversationMessages.any((m) => m.id == message.id);
+              if (!alreadyExists) {
+                conversationMessages.add(message);
+              }
             }
           }
         }
@@ -160,17 +180,8 @@ class MessageService {
       // Sort messages by date
       conversationMessages.sort((a, b) => a.createdAt.compareTo(b.createdAt));
 
-      // If no messages found, return admin messages for demo
+      // If no messages found and talking to admin, return admin messages for demo
       if (conversationMessages.isEmpty && otherUserId == '100') {
-        // Mark messages as read (only received messages)
-        for (var message in _adminMessages) {
-          if (message.receiver['_id'] == currentUser.id) {
-            // Note: In a real app, you'd create a new Message with isRead: true
-            // For now, we'll just return the messages as they are
-          }
-        }
-
-        // Update unread message count
         return List.from(_adminMessages);
       }
 
@@ -181,7 +192,8 @@ class MessageService {
   }
 
   // Send message
-  Future<Message> sendMessage(String receiverId, String content) async {
+  Future<Message> sendMessage(String receiverId, String content,
+      {String? receiverName}) async {
     try {
       await Future.delayed(const Duration(seconds: 1));
 
@@ -203,48 +215,74 @@ class MessageService {
         };
       }
 
+      // Get receiver info (use provided name or default)
+      Map<String, dynamic> receiverInfo = {
+        '_id': receiverId,
+        'name': receiverName ?? 'Seller User',
+        'email': 'seller@emu.edu.tr'
+      };
+
       // Create new message
       final newMessage = Message(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         sender: senderInfo,
-        receiver: {'_id': receiverId, 'name': 'Receiver User'},
+        receiver: receiverInfo,
         content: content,
         createdAt: DateTime.now(),
         isRead: false,
       );
 
-      // For demo purposes, we'll add a mock response
-      final responseMessage = Message(
-        id: (DateTime.now().millisecondsSinceEpoch + 1).toString(),
-        sender: {'_id': receiverId, 'name': 'Receiver User'},
-        receiver: senderInfo,
-        content: 'Thank you for your message! I will get back to you soon.',
-        createdAt: DateTime.now().add(const Duration(seconds: 5)),
-        isRead: false,
-      );
-
-      // Add message - with sender's ID
+      // Add message to sender's messages
       String senderId = senderInfo['_id'];
       if (!_mockMessages.containsKey(senderId)) {
         _mockMessages[senderId] = [];
       }
       _mockMessages[senderId]!.add(newMessage);
 
-      // Add response message
-      if (!_mockMessages.containsKey(receiverId)) {
-        _mockMessages[receiverId] = [];
+      // Create or update conversation in mock conversations
+      String conversationKey = '${senderId}_$receiverId';
+      if (!_mockConversations.containsKey(conversationKey)) {
+        _mockConversations[conversationKey] = [];
       }
-      _mockMessages[receiverId]!.add(responseMessage);
 
-      // If sending to admin (id: '100'), also add to admin messages for immediate visibility
-      if (receiverId == '100') {
-        _adminMessages.add(newMessage);
+      // Add message to conversation
+      _mockConversations[conversationKey]!.add({
+        'id': newMessage.id,
+        'sender': senderInfo,
+        'receiver': receiverInfo,
+        'message': content,
+        'timestamp': DateTime.now(),
+        'read': false,
+      });
 
-        // Add a delayed response to admin messages
-        Future.delayed(const Duration(seconds: 2), () {
-          _adminMessages.add(responseMessage);
+      // For demo purposes, add a mock response after a delay
+      Future.delayed(const Duration(seconds: 3), () {
+        final responseMessage = Message(
+          id: (DateTime.now().millisecondsSinceEpoch + 1).toString(),
+          sender: receiverInfo,
+          receiver: senderInfo,
+          content:
+              'Thank you for your interest! The book is still available. When would you like to meet?',
+          createdAt: DateTime.now(),
+          isRead: false,
+        );
+
+        // Add response to receiver's messages
+        if (!_mockMessages.containsKey(receiverId)) {
+          _mockMessages[receiverId] = [];
+        }
+        _mockMessages[receiverId]!.add(responseMessage);
+
+        // Add response to conversation
+        _mockConversations[conversationKey]!.add({
+          'id': responseMessage.id,
+          'sender': receiverInfo,
+          'receiver': senderInfo,
+          'message': responseMessage.content,
+          'timestamp': responseMessage.createdAt,
+          'read': false,
         });
-      }
+      });
 
       return newMessage;
     } catch (e) {

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import './rate_screen.dart';
 import 'dart:io';
+import '../services/service_provider.dart';
+import 'chat_screen.dart';
 
 class BookDetailScreen extends StatefulWidget {
   final Map<String, dynamic> book;
@@ -21,6 +23,7 @@ class BookDetailScreen extends StatefulWidget {
 class _BookDetailScreenState extends State<BookDetailScreen> {
   static final List<Map<String, dynamic>> _favoriteBooks = [];
   late bool isFavorite;
+  final _messageService = ServiceProvider().messageService;
 
   @override
   void initState() {
@@ -488,11 +491,7 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
                               if (onMessageSent != null) {
                                 onMessageSent!(_msgController.text);
                               }
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                    content: Text(lang['messageSent'] ??
-                                        'Message sent!')),
-                              );
+                              _contactSeller(_msgController.text);
                             },
                             child: Text(
                               lang['send'] ?? 'Send',
@@ -630,6 +629,80 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _contactSeller(String message) async {
+    try {
+      // Get seller information from book
+      final owner = widget.book['owner'];
+      if (owner == null) {
+        // If no owner info, use a default seller for demo
+        const sellerId = 'default_seller';
+        const sellerName = 'Book Seller';
+
+        await _messageService.sendMessage(sellerId, message,
+            receiverName: sellerName);
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(widget.lang['messageSent'] ?? 'Message sent!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ChatScreen(
+                recipientId: sellerId,
+                recipientName: sellerName,
+                lang: widget.lang,
+              ),
+            ),
+          );
+        }
+        return;
+      }
+
+      final sellerId = owner['_id'] as String;
+      final sellerName = owner['name'] as String;
+
+      // Send message through message service
+      await _messageService.sendMessage(sellerId, message,
+          receiverName: sellerName);
+
+      if (mounted) {
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(widget.lang['messageSent'] ?? 'Message sent!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+
+        // Navigate to chat screen to continue conversation
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ChatScreen(
+              recipientId: sellerId,
+              recipientName: sellerName,
+              lang: widget.lang,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error sending message: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 }
 

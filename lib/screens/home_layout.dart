@@ -209,6 +209,10 @@ class _HomeLayoutState extends State<HomeLayout> {
           setState(() {
             _currentIndex = index;
           });
+          // Refresh home screen when switching to Home tab
+          if (index == 0) {
+            _refreshHomeScreen?.call();
+          }
         },
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),

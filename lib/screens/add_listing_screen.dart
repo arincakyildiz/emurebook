@@ -19,6 +19,7 @@ class _AddListingScreenState extends State<AddListingScreen> {
   File? _selectedImage;
   final ImagePicker _picker = ImagePicker();
   String _selectedExchangeType = 'Sell'; // Default to Sell
+  String _selectedCondition = 'Good'; // Default to Good
 
   final _bookService = BookService();
 
@@ -144,6 +145,7 @@ class _AddListingScreenState extends State<AddListingScreen> {
             : descriptionController.text,
         imageFile: _selectedImage,
         exchangeType: _selectedExchangeType,
+        condition: _selectedCondition,
       );
 
       if (mounted) {
@@ -288,6 +290,133 @@ class _AddListingScreenState extends State<AddListingScreen> {
             ),
             const SizedBox(height: 24),
 
+            // Condition Selection
+            const Text(
+              'Book Condition *',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey.shade300),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  value: _selectedCondition,
+                  isExpanded: true,
+                  icon: const Icon(Icons.arrow_drop_down),
+                  items: [
+                    DropdownMenuItem(
+                      value: 'Like New',
+                      child: Row(
+                        children: [
+                          Icon(Icons.star, color: Colors.green[600], size: 20),
+                          const SizedBox(width: 8),
+                          const Text('Like New'),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.green,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Text(
+                              'EXCELLENT',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    DropdownMenuItem(
+                      value: 'Good',
+                      child: Row(
+                        children: [
+                          Icon(Icons.thumb_up,
+                              color: Colors.blue[600], size: 20),
+                          const SizedBox(width: 8),
+                          const Text('Good'),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.blue,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Text(
+                              'GOOD',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    DropdownMenuItem(
+                      value: 'Fair',
+                      child: Row(
+                        children: [
+                          Icon(Icons.info, color: Colors.orange[600], size: 20),
+                          const SizedBox(width: 8),
+                          const Text('Fair'),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.orange,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Text(
+                              'FAIR',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                  onChanged: (String? newValue) {
+                    if (newValue != null) {
+                      setState(() {
+                        _selectedCondition = newValue;
+                      });
+                    }
+                  },
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _getConditionDescription(_selectedCondition),
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey[600],
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+            const SizedBox(height: 24),
+
             // Exchange Type Selection
             const Text(
               'Exchange Type *',
@@ -402,5 +531,18 @@ class _AddListingScreenState extends State<AddListingScreen> {
         ),
       ),
     );
+  }
+
+  String _getConditionDescription(String condition) {
+    switch (condition) {
+      case 'Like New':
+        return 'Minimal wear, looks almost new';
+      case 'Good':
+        return 'Some wear but still in good condition';
+      case 'Fair':
+        return 'Noticeable wear but still functional';
+      default:
+        return '';
+    }
   }
 }

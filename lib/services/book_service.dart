@@ -23,6 +23,7 @@ class BookService {
     String? description,
     File? imageFile,
     String exchangeType = 'Sell',
+    String condition = 'Good',
   }) async {
     // For now, we'll just use a placeholder image path or the provided file path
     String imageUrl = 'assets/images/emu_logo.png';
@@ -57,7 +58,7 @@ class BookService {
       author: author,
       description: description ?? 'A book by $author',
       imageUrl: imageUrl,
-      condition: 'Good',
+      condition: condition,
       price: price,
       category: 'General',
       exchangeType: exchangeType,

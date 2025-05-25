@@ -782,8 +782,40 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildConditionChip(String condition) {
     final isSelected = _selectedCondition == condition;
+    Color chipColor;
+    IconData chipIcon;
+
+    switch (condition) {
+      case 'Like New':
+        chipColor = Colors.green;
+        chipIcon = Icons.star;
+        break;
+      case 'Good':
+        chipColor = Colors.blue;
+        chipIcon = Icons.thumb_up;
+        break;
+      case 'Fair':
+        chipColor = Colors.orange;
+        chipIcon = Icons.info;
+        break;
+      default:
+        chipColor = Colors.grey;
+        chipIcon = Icons.all_inclusive;
+    }
+
     return FilterChip(
-      label: Text(condition),
+      label: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            chipIcon,
+            size: 16,
+            color: isSelected ? Colors.white : chipColor,
+          ),
+          const SizedBox(width: 4),
+          Text(condition),
+        ],
+      ),
       selected: isSelected,
       onSelected: (bool selected) {
         setState(() {
@@ -791,10 +823,10 @@ class _HomeScreenState extends State<HomeScreen> {
         });
       },
       backgroundColor: Colors.grey[200],
-      selectedColor: const Color(0xFF2D66F4).withOpacity(0.2),
-      checkmarkColor: const Color(0xFF2D66F4),
+      selectedColor: chipColor,
+      checkmarkColor: Colors.white,
       labelStyle: TextStyle(
-        color: isSelected ? const Color(0xFF2D66F4) : Colors.grey[800],
+        color: isSelected ? Colors.white : chipColor,
         fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
         fontSize: 14,
         letterSpacing: 0.2,
