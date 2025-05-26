@@ -591,139 +591,147 @@ class _HomeScreenState extends State<HomeScreen> {
   void _showFilterDialog(BuildContext context) {
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (context) => StatefulBuilder(
-        builder: (context, setState) => Container(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        builder: (context, setState) => Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+          ),
+          child: SingleChildScrollView(
+            child: Container(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Filter Books',
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF2D66F4),
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          setState(() {
+                            _priceRange = const RangeValues(0, 1000);
+                            _selectedCondition = 'All';
+                            _selectedExchangeType = 'All';
+                          });
+                        },
+                        child: const Text(
+                          'Reset',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF2D66F4),
+                            letterSpacing: 0.2,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
                   const Text(
-                    'Filter Books',
+                    'Price Range',
                     style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF2D66F4),
-                      letterSpacing: 0.5,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
+                      letterSpacing: 0.2,
                     ),
                   ),
-                  TextButton(
-                    onPressed: () {
+                  const SizedBox(height: 8),
+                  RangeSlider(
+                    values: _priceRange,
+                    min: 0,
+                    max: 1000,
+                    divisions: 10,
+                    labels: RangeLabels(
+                      '₺${_priceRange.start.round()}',
+                      '₺${_priceRange.end.round()}',
+                    ),
+                    onChanged: (values) {
                       setState(() {
-                        _priceRange = const RangeValues(0, 1000);
-                        _selectedCondition = 'All';
-                        _selectedExchangeType = 'All';
+                        _priceRange = values;
                       });
                     },
-                    child: const Text(
-                      'Reset',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF2D66F4),
-                        letterSpacing: 0.2,
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Exchange Type',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
+                      letterSpacing: 0.2,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    children: [
+                      _buildExchangeTypeChip('All'),
+                      _buildExchangeTypeChip('Sell'),
+                      _buildExchangeTypeChip('Exchange'),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Condition',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
+                      letterSpacing: 0.2,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    children: [
+                      _buildConditionChip('All'),
+                      _buildConditionChip('Like New'),
+                      _buildConditionChip('Good'),
+                      _buildConditionChip('Fair'),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        this.setState(() {});
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF2D66F4),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'Apply Filters',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.5,
+                        ),
                       ),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 20),
-              const Text(
-                'Price Range',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black87,
-                  letterSpacing: 0.2,
-                ),
-              ),
-              const SizedBox(height: 8),
-              RangeSlider(
-                values: _priceRange,
-                min: 0,
-                max: 1000,
-                divisions: 10,
-                labels: RangeLabels(
-                  '₺${_priceRange.start.round()}',
-                  '₺${_priceRange.end.round()}',
-                ),
-                onChanged: (values) {
-                  setState(() {
-                    _priceRange = values;
-                  });
-                },
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Exchange Type',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black87,
-                  letterSpacing: 0.2,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                children: [
-                  _buildExchangeTypeChip('All'),
-                  _buildExchangeTypeChip('Sell'),
-                  _buildExchangeTypeChip('Exchange'),
-                ],
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Condition',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black87,
-                  letterSpacing: 0.2,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                children: [
-                  _buildConditionChip('All'),
-                  _buildConditionChip('Like New'),
-                  _buildConditionChip('Good'),
-                  _buildConditionChip('Fair'),
-                ],
-              ),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    this.setState(() {});
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF2D66F4),
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: const Text(
-                    'Apply Filters',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),
